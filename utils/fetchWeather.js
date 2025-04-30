@@ -7,7 +7,7 @@ const lng = parseFloat(process.env.LNG);
 const apiKey = process.env.STORMGLASS_API_KEY;
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
-const marineZone = 'ANZ538'; // Chesapeake Bay from North Beach to Drum Point
+const marineZone = 'ANZ538';
 
 const weatherParams = [
   'airTemperature',
@@ -19,8 +19,9 @@ const weatherParams = [
   'waterTemperature'
 ];
 
-const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
+const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
+const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
 const nwsAlertEndpoint = `https://api.weather.gov/alerts/active/zone/${marineZone}`;
 
 function degreesToCompass(deg) {
@@ -48,7 +49,7 @@ function getNextForecastTime() {
   if (localHour < 7) nextHour = 7;
   else if (localHour < 12) nextHour = 12;
   else if (localHour < 17) nextHour = 17;
-  else nextHour = 7; // next morning
+  else nextHour = 7;
 
   const nextDate = new Date(now);
   nextDate.setHours(nextHour, 0, 0, 0);
@@ -56,8 +57,27 @@ function getNextForecastTime() {
 
   const local = nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
   const utc = nextDate.toUTCString().match(/\d{2}:\d{2}/)[0];
-
   return `**${local} ${timezone} / ${utc} UTC**`;
+}
+
+function getMoonEmoji(phase) {
+  const map = {
+    'New Moon': '🌑',
+    'Waxing Crescent': '🌒',
+    'First Quarter': '🌓',
+    'Waxing Gibbous': '🌔',
+    'Full Moon': '🌕',
+    'Waning Gibbous': '🌖',
+    'Last Quarter': '🌗',
+    'Waning Crescent': '🌘',
+  };
+  return map[phase] || '🌙';
+}
+
+function getGreetingEmoji(hour) {
+  if (hour < 12) return '🌅 Good Morning';
+  if (hour < 17) return '🌞 Good Afternoon';
+  return '🌇 Good Evening';
 }
 
 async function fetchAdvisory() {
@@ -98,9 +118,10 @@ async function fetchAdvisory() {
 async function fetchForecastEmbed() {
   const headers = { Authorization: apiKey };
 
-  const [forecastRes, tideRes, advisoryInfo] = await Promise.all([
+  const [forecastRes, tideRes, astronomyRes, advisoryInfo] = await Promise.all([
     fetch(forecastEndpoint, { headers }).then(r => r.json()),
     fetch(tideEndpoint, { headers }).then(r => r.json()),
+    fetch(astronomyEndpoint, { headers }).then(r => r.json()),
     fetchAdvisory()
   ]);
 
@@ -137,31 +158,37 @@ async function fetchForecastEmbed() {
     })
     .join('\n');
 
+  const astro = astronomyRes.data[0];
+  const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const moonPhase = astro.moonPhase;
+  const moonEmoji = getMoonEmoji(moonPhase);
+
+  const dateString = now.toLocaleDateString();
+  const greeting = getGreetingEmoji(hour);
   const localTime = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const utcTime = now.toUTCString().match(/\d{2}:\d{2}/)[0];
 
-  const dateString = now.toLocaleDateString();
-const greeting = (hour < 12) ? "Good Morning" : (hour < 17 ? "Good Afternoon" : "Good Evening");
-
-const embed = new EmbedBuilder()
-  .setTitle(`🌤️ Camp Tockwogh Forecast`)
-  .addFields(
-    { name: 'Date', value: dateString, inline: true },
-    { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
-    { name: 'Greeting', value: greeting, inline: true },
-    { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
-    { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
-    { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
-    { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
-    { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
-    { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
-    { name: 'Tides', value: tideSummary || 'No data', inline: false },
-    { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
-    { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
-  )
-  .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
-  .setTimestamp();
-
+  const embed = new EmbedBuilder()
+    .setTitle(`🌤️ Camp Tockwogh Forecast`)
+    .addFields(
+      { name: 'Date', value: dateString, inline: true },
+      { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
+      { name: 'Greeting', value: greeting, inline: true },
+      { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
+      { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
+      { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
+      { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
+      { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
+      { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
+      { name: 'Tides', value: tideSummary || 'No data', inline: false },
+      { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
+      { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },
+      { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: false },
+      { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
+    )
+    .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
+    .setTimestamp();
 
   return embed;
 }

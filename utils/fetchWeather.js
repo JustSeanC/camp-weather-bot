@@ -42,17 +42,22 @@ function cToF(c) {
 
 function getNextForecastTime() {
   const now = new Date();
-  const upcoming = [7, 12, 17]; // forecast hours
-  const localHour = now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone });
+  const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
 
-  const nextHour = upcoming.find(h => h > localHour) ?? upcoming[0]; // wrap to tomorrow if needed
+  let nextHour;
+  if (localHour < 7) nextHour = 7;
+  else if (localHour < 12) nextHour = 12;
+  else if (localHour < 17) nextHour = 17;
+  else nextHour = 7; // next morning
+
   const nextDate = new Date(now);
   nextDate.setHours(nextHour, 0, 0, 0);
-  if (nextHour <= localHour) nextDate.setDate(now.getDate() + 1);
+  if (nextHour === 7 && localHour >= 17) nextDate.setDate(now.getDate() + 1);
 
-  const local = nextDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: timezone });
+  const local = nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
   const utc = nextDate.toUTCString().match(/\d{2}:\d{2}/)[0];
-  return `${local} ${timezone} / ${utc} UTC`;
+
+  return `**${local} ${timezone} / ${utc} UTC**`;
 }
 
 async function fetchAdvisory() {
@@ -71,20 +76,29 @@ async function fetchAdvisory() {
         minute: '2-digit',
       });
 
-      return `⚠️ **${event}**\nExpires: ${endTime}\n${description.split('\n')[0]}`;
+      return {
+        text: `⚠️ **${event}**\nExpires: ${endTime}\n${description.split('\n')[0]}`,
+        hasAdvisory: true
+      };
     } else {
-      return '✅ No advisories in effect.';
+      return {
+        text: '✅ No advisories in effect.',
+        hasAdvisory: false
+      };
     }
   } catch (err) {
     console.error('Failed to fetch advisory:', err);
-    return '⚠️ Unable to retrieve advisory data.';
+    return {
+      text: '⚠️ Unable to retrieve advisory data.',
+      hasAdvisory: false
+    };
   }
 }
 
 async function fetchForecastEmbed() {
   const headers = { Authorization: apiKey };
 
-  const [forecastRes, tideRes, advisoryText] = await Promise.all([
+  const [forecastRes, tideRes, advisoryInfo] = await Promise.all([
     fetch(forecastEndpoint, { headers }).then(r => r.json()),
     fetch(tideEndpoint, { headers }).then(r => r.json()),
     fetchAdvisory()
@@ -123,23 +137,30 @@ async function fetchForecastEmbed() {
     })
     .join('\n');
 
-  const localTime = now.toLocaleString('en-US', { timeZone: timezone, hour: 'numeric', minute: '2-digit' });
+  const localTime = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const utcTime = now.toUTCString().match(/\d{2}:\d{2}/)[0];
 
   const embed = new EmbedBuilder()
-    .setTitle(`🌤️ Camp Tockwogh Forecast – ${now.toLocaleDateString()} ${localTime} ${timezone} / ${utcTime} UTC`)
-    .addFields(
-      { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
-      { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
-      { name: 'Precipitation', value: `${precip} mm`, inline: true },
-      { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
-      { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
-      { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
-      { name: 'Tides', value: tideSummary || 'No data', inline: false },
-      { name: 'Marine Advisory', value: advisoryText, inline: false },
-      { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
-    )
-    .setColor(0x00bfff)
+  .setTitle(`🌤️ Camp Tockwogh Forecast`)
+  const dateString = now.toLocaleDateString();
+const greeting = (hour < 12) ? "Good Morning" : (hour < 17 ? "Good Afternoon" : "Good Evening");
+
+.addFields(
+  { name: 'Date', value: dateString, inline: true },
+  { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
+  { name: 'Greeting', value: greeting, inline: true },
+  { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
+  { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
+  { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
+  { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
+  { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
+  { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
+  { name: 'Tides', value: tideSummary || 'No data', inline: false },
+  { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
+  { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
+)
+
+    .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
     .setTimestamp();
 
   return embed;

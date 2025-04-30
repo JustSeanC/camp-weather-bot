@@ -140,28 +140,28 @@ async function fetchForecastEmbed() {
   const localTime = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const utcTime = now.toUTCString().match(/\d{2}:\d{2}/)[0];
 
-  const embed = new EmbedBuilder()
-  .setTitle(`🌤️ Camp Tockwogh Forecast`)
   const dateString = now.toLocaleDateString();
 const greeting = (hour < 12) ? "Good Morning" : (hour < 17 ? "Good Afternoon" : "Good Evening");
 
-.addFields(
-  { name: 'Date', value: dateString, inline: true },
-  { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
-  { name: 'Greeting', value: greeting, inline: true },
-  { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
-  { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
-  { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
-  { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
-  { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
-  { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
-  { name: 'Tides', value: tideSummary || 'No data', inline: false },
-  { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
-  { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
-)
+const embed = new EmbedBuilder()
+  .setTitle(`🌤️ Camp Tockwogh Forecast`)
+  .addFields(
+    { name: 'Date', value: dateString, inline: true },
+    { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
+    { name: 'Greeting', value: greeting, inline: true },
+    { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
+    { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
+    { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
+    { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
+    { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
+    { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
+    { name: 'Tides', value: tideSummary || 'No data', inline: false },
+    { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
+    { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
+  )
+  .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
+  .setTimestamp();
 
-    .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
-    .setTimestamp();
 
   return embed;
 }

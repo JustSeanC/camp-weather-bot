@@ -198,7 +198,7 @@ async function fetchForecastEmbed() {
       { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
       { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
       { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
-      { name: 'Wave Height', value: `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
+      { name: 'Wave Height', value: isNaN(wave) ? 'N/A' : `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
       { name: 'Tides', value: tideSummary || 'No data', inline: false },
       { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
       { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },

@@ -43,22 +43,30 @@ function cToF(c) {
 
 function getNextForecastTime() {
   const now = new Date();
-  const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
+
+  // Get current hour in NY timezone explicitly
+  const localHour = parseInt(now.toLocaleString('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: timezone
+  }));
 
   let nextHour;
   if (localHour < 7) nextHour = 7;
   else if (localHour < 12) nextHour = 12;
   else if (localHour < 17) nextHour = 17;
-  else nextHour = 7;
+  else nextHour = 7; // next morning
 
-  const nextDate = new Date(now);
+  const nextDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   nextDate.setHours(nextHour, 0, 0, 0);
-  if (nextHour === 7 && localHour >= 17) nextDate.setDate(now.getDate() + 1);
+  if (nextHour === 7 && localHour >= 17) nextDate.setDate(nextDate.getDate() + 1);
 
   const local = nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
   const utc = nextDate.toUTCString().match(/\d{2}:\d{2}/)[0];
+
   return `**${local} ${timezone} / ${utc} UTC**`;
 }
+
 
 function getMoonEmoji(phase) {
   const map = {
@@ -158,10 +166,20 @@ async function fetchForecastEmbed() {
     })
     .join('\n');
 
-    const astro = astronomyRes.[0];
-    const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const moonPhase = astro.moonPhase;
+    const astro = astronomyRes.data;
+    const sunrise = new Date(Date.parse(astro.sunrise)).toLocaleTimeString('en-US', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    const sunset = new Date(Date.parse(astro.sunset)).toLocaleTimeString('en-US', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+  const moonPhase = astro.moonPhase?.text || 'Unknown';
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const dateString = now.toLocaleDateString();

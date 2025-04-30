@@ -1,3 +1,4 @@
+require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
 
@@ -35,6 +36,11 @@ async function fetchForecastEmbed() {
   const tideData = await tideRes.json();
 
   const hour = new Date().getHours();
+if (!forecastData.hours) {
+  console.error("❌ Stormglass forecast data missing or invalid:", forecastData);
+  throw new Error("Invalid forecast data returned from Stormglass");
+}
+
   const hourIndex = forecastData.hours.findIndex(h => new Date(h.time).getHours() === hour);
 
   const current = forecastData.hours[hourIndex];

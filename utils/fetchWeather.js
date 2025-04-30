@@ -158,8 +158,8 @@ async function fetchForecastEmbed() {
     })
     .join('\n');
 
-  const astro = astronomyRes.data[0];
-  const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+    const astro = astronomyRes.data;
+    const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const moonPhase = astro.moonPhase;
   const moonEmoji = getMoonEmoji(moonPhase);

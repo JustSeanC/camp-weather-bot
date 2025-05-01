@@ -1,3 +1,4 @@
 .env
-node_modules/
+node_modules/D
 /data/lastMarineAlert.json
+data/lastMarineAlert.json

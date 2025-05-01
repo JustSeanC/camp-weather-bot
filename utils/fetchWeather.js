@@ -19,14 +19,12 @@ const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
 
-// 🔁 Fallback token logic for all endpoints
+// Fallback logic
 async function fetchWithFallback(url) {
   const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
-
   const resPrimary = await fetch(url, { headers: headersPrimary });
   if (resPrimary.status !== 429) return resPrimary;
-
   console.warn(`[⚠️] Rate limit hit on primary token for ${url}. Trying secondary...`);
   return await fetch(url, { headers: headersSecondary });
 }
@@ -63,54 +61,25 @@ function getNextForecastTime() {
   const now = new Date();
   const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   const hour = localNow.getHours();
-
-  let nextHour;
-  let isTomorrow = false;
-
-  if (hour < 7) {
-    nextHour = 7;
-  } else if (hour < 12) {
-    nextHour = 12;
-  } else if (hour < 17) {
-    nextHour = 17;
-  } else {
-    nextHour = 7;
-    localNow.setDate(localNow.getDate() + 1);
-    isTomorrow = true;
-  }
-
+  let nextHour, isTomorrow = false;
+  if (hour < 7) nextHour = 7;
+  else if (hour < 12) nextHour = 12;
+  else if (hour < 17) nextHour = 17;
+  else { nextHour = 7; localNow.setDate(localNow.getDate() + 1); isTomorrow = true; }
   localNow.setHours(nextHour, 0, 0, 0);
-
-  const localFormatted = localNow.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: timezone
-  });
-
+  const localFormatted = localNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
   const utcFormatted = localNow.toUTCString().match(/\d{2}:\d{2}/)[0];
-
-  const dateFormatted = localNow.toLocaleDateString('en-US', {
-    timeZone: timezone,
-    month: 'short',
-    day: 'numeric'
-  });
-
+  const dateFormatted = localNow.toLocaleDateString('en-US', { timeZone: timezone, month: 'short', day: 'numeric' });
   return isTomorrow
-    ? `**${localFormatted} ${timezone} / ${utcFormatted} UTC** on ${dateFormatted}`
-    : `**${localFormatted} ${timezone} / ${utcFormatted} UTC**`;
+    ? `**${localFormatted} EDT / ${utcFormatted} UTC** on ${dateFormatted}`
+    : `**${localFormatted} EDT / ${utcFormatted} UTC**`;
 }
-
 
 function getMoonEmoji(phase) {
   const map = {
-    'New Moon': '🌑',
-    'Waxing Crescent': '🌒',
-    'First Quarter': '🌓',
-    'Waxing Gibbous': '🌔',
-    'Full Moon': '🌕',
-    'Waning Gibbous': '🌖',
-    'Last Quarter': '🌗',
-    'Waning Crescent': '🌘',
+    'New Moon': '🌑', 'Waxing Crescent': '🌒', 'First Quarter': '🌓',
+    'Waxing Gibbous': '🌔', 'Full Moon': '🌕', 'Waning Gibbous': '🌖',
+    'Last Quarter': '🌗', 'Waning Crescent': '🌘',
   };
   return map[phase] || '🌙';
 }
@@ -132,35 +101,23 @@ async function fetchForecastEmbed() {
   const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
 
   let startHour, endHour;
-  if (localHour < 7) {
-    startHour = 5;
-    endHour = 7;
-  } else if (localHour < 12) {
-    startHour = 7;
-    endHour = 12;
-  } else if (localHour < 17) {
-    startHour = 12;
-    endHour = 17;
-  } else {
-    startHour = 17;
-    endHour = 7;
-  }
+  if (localHour < 7) { startHour = 5; endHour = 7; }
+  else if (localHour < 12) { startHour = 7; endHour = 12; }
+  else if (localHour < 17) { startHour = 12; endHour = 17; }
+  else { startHour = 17; endHour = 7; }
 
   const forecastWindow = forecastRes.hours.filter(h => {
     const hour = new Date(h.time).getHours();
-    if (startHour < endHour) return hour >= startHour && hour < endHour;
-    return hour >= startHour || hour < endHour;
+    return (startHour < endHour) ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour;
   });
 
-  if (forecastWindow.length === 0) {
-    throw new Error("No forecast data for current window");
-  }
+  if (forecastWindow.length === 0) throw new Error("No forecast data for current window");
 
   const tempsF = forecastWindow.map(h => cToF(h.airTemperature?.noaa ?? 0));
   const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);
   const waveHeights = forecastWindow.map(h => h.waveHeight?.noaa ?? 0);
-  const clouds = forecastWindow.map(h => h.cloudCover?.noaa ?? 0);
-  const weatherTypes = clouds.map(c => {
+  const weatherTypes = forecastWindow.map(h => {
+    const c = h.cloudCover?.noaa ?? 0;
     if (c < 10) return 'Clear';
     if (c < 40) return 'Mostly Sunny';
     if (c < 70) return 'Partly Cloudy';
@@ -178,8 +135,6 @@ async function fetchForecastEmbed() {
   const windMax = Math.max(...winds);
   const waveMin = Math.min(...waveHeights);
   const waveMax = Math.max(...waveHeights);
-  const cloudMin = Math.min(...clouds);
-  const cloudMax = Math.max(...clouds);
 
   const waveAlert = waveMax >= 1.22;
   const windAlert = windMax >= 8.05;
@@ -207,23 +162,57 @@ async function fetchForecastEmbed() {
     .setTitle(`🌤️ Camp Tockwogh Forecast`)
     .addFields(
       { name: 'Date', value: dateString, inline: true },
-      { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
-      { name: 'Greeting', value: greeting, inline: true },
+      { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
       {
         name: 'Forecast Window',
         value: `${formatHour12(startHour)} → ${endHour === 7 ? '7:00 AM (next day)' : formatHour12(endHour)} EDT`,
         inline: false
       },
-      { name: 'Temperature', value: `${((tempMin - 32) * 5 / 9).toFixed(1)}°C / ${tempMin}°F → ${((tempMax - 32) * 5 / 9).toFixed(1)}°C / ${tempMax}°F`, inline: true },
-      { name: 'Wind', value: `${windMin.toFixed(1)} m/s / ${mpsToMph(windMin)} mph → ${windMax.toFixed(1)} m/s / ${mpsToMph(windMax)} mph\nDirection: ${degreesToCompass(windAvgDir)} avg`, inline: true },
-      { name: 'Cloud Cover', value: `${cloudMin}% → ${cloudMax}%`, inline: true },
-      { name: 'Sky Conditions', value: [...new Set(weatherTypes)].join(', '), inline: true },
-      { name: 'Wave Height', value: `${waveMin.toFixed(2)} m / ${metersToFeet(waveMin)} ft → ${waveMax.toFixed(2)} m / ${metersToFeet(waveMax)} ft`, inline: true },
-      { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
-      { name: 'Tides', value: tideSummary || 'No data', inline: false },
-      { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },
-      { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: false },
-      { name: 'Next Forecast', value: getNextForecastTime(), inline: false },
+      {
+        name: 'Temperature',
+        value: `🔻 ${tempMin}°F (${((tempMin - 32) * 5 / 9).toFixed(1)}°C)\n🔺 ${tempMax}°F (${((tempMax - 32) * 5 / 9).toFixed(1)}°C)`,
+        inline: true
+      },
+      {
+        name: 'Wind',
+        value: `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)\n🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)\n➡️ Direction: ${degreesToCompass(windAvgDir)} avg`,
+        inline: true
+      },
+      {
+        name: 'Wave Height',
+        value: `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)\n🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`,
+        inline: true
+      },
+      {
+        name: 'Water Temp',
+        value: `${waterTempF}°F (${waterTempC}°C)`,
+        inline: true
+      },
+      {
+        name: 'Sky Conditions',
+        value: [...new Set(weatherTypes)].join(', '),
+        inline: true
+      },
+      {
+        name: 'Tides',
+        value: tideSummary || 'No data',
+        inline: false
+      },
+      {
+        name: 'Sunrise / Sunset',
+        value: `🌅 ${sunrise} / 🌇 ${sunset}`,
+        inline: true
+      },
+      {
+        name: 'Moon Phase',
+        value: `${moonEmoji} ${moonPhase}`,
+        inline: true
+      },
+      {
+        name: 'Next Forecast',
+        value: getNextForecastTime(),
+        inline: false
+      },
       ...(showAdvisory ? [{
         name: '⚠️ Marine Advisory Forecast',
         value: 'Potential for Small Craft Advisory.\nConditions may be hazardous — use caution.',

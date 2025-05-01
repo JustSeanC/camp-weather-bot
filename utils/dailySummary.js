@@ -65,16 +65,18 @@ async function postDailySummary(client) {
     const res = await fetch(forecastEndpoint, { headers });
     const data = await res.json();
 
-    //const yesterday = new Date();
-    //yesterday.setDate(yesterday.getDate() - 1);
-    //const targetDate = yesterday.toLocaleDateString('en-US', { timeZone: timezone });
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const targetDate = yesterday.toLocaleDateString('en-US', { timeZone: timezone });
 // Test date for today
-const targetDate = new Date().toLocaleDateString('en-US', { timeZone: timezone });
+//const targetDate = new Date().toLocaleDateString('en-US', { timeZone: timezone });
 
-    const forecast = data.hours.filter(h => {
-      const localDate = new Date(h.time).toLocaleDateString('en-US', { timeZone: timezone });
-      return localDate === targetDate;
-    });
+const forecast = data.hours.filter(h => {
+    const local = new Date(h.time).toLocaleDateString('en-US', { timeZone: timezone });
+    return local === targetDate;
+  });
+  console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
+
 
     if (forecast.length === 0) throw new Error('No forecast data available');
 

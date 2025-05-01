@@ -15,8 +15,21 @@ async function checkMarineAdvisory(client) {
     const data = await res.json();
 
     const alert = data.features.find(
-      alert => alert.properties.event.toLowerCase().includes('small craft')
-    );
+        alert => alert.properties.event.toLowerCase().includes('small craft')
+      ) || {
+        id: 'TEST-ALERT',
+        properties: {
+          event: 'Small Craft Advisory',
+          headline: 'TEST Advisory - This is a drill',
+          description: 'Simulated conditions for testing only.',
+          areaDesc: 'Chesapeake Bay from North Beach to Drum Point',
+          onset: new Date().toISOString(),
+          ends: new Date(Date.now() + 3600000).toISOString(),
+          sent: new Date().toISOString(),
+          instruction: 'No real danger. This is a test of the advisory alert system.'
+        }
+      };
+      
 
     if (!alert) return;
 

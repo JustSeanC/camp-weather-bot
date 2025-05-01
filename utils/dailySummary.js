@@ -8,7 +8,6 @@ const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
 
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
-const apiKey = process.env.STORMGLASS_API_KEY;
 const timezone = process.env.TIMEZONE || 'America/New_York';
 const DISCORD_CHANNEL_ID = process.env.DAILY_SUMMARY_CHANNEL_ID || process.env.DISCORD_CHANNEL_ID;
 
@@ -30,6 +29,14 @@ function mpsToMph(ms) {
 
 function metersToFeet(m) {
   return (m * 3.28084).toFixed(1);
+}
+
+function formatTime12(date) {
+  return new Date(date).toLocaleTimeString('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function summarizeSky(clouds) {
@@ -58,6 +65,17 @@ function getAlertStatus() {
   }
 }
 
+async function fetchWithFallback(url) {
+  const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
+  const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
+
+  const resPrimary = await fetch(url, { headers: headersPrimary });
+  if (resPrimary.status !== 429) return resPrimary;
+
+  console.warn('[⚠️] Primary API token rate-limited — using secondary token.');
+  return await fetch(url, { headers: headersSecondary });
+}
+
 async function postDailySummary(client) {
   try {
     const start = new Date();
@@ -70,17 +88,14 @@ async function postDailySummary(client) {
     const isoStart = start.toISOString();
     const isoEnd = end.toISOString();
 
-    const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
-    const headers = { Authorization: apiKey };
-    const res = await fetch(forecastEndpoint, { headers });
+    const endpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
+    const res = await fetchWithFallback(endpoint);
     const data = await res.json();
 
     const forecast = data.hours.filter(h => {
       const time = new Date(h.time);
       return time >= start && time <= end;
     });
-
-    console.log("Filtered timestamps:", forecast.map(h => h.time));
 
     if (forecast.length === 0) throw new Error('No forecast data available');
 
@@ -102,53 +117,19 @@ async function postDailySummary(client) {
 
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
-      .setDescription(
-        `Time range: ${new Date(startTime).toLocaleTimeString('en-US', {
-          timeZone: timezone,
-          hour: 'numeric',
-          minute: '2-digit',
-        })} → ${new Date(endTime).toLocaleTimeString('en-US', {
-          timeZone: timezone,
-          hour: 'numeric',
-          minute: '2-digit',
-        })}\n\n`
-      )
+      .setDescription(`Time range: ${formatTime12(startTime)} → ${formatTime12(endTime)}\n\n`)
       .addFields(
-        {
-          name: 'High Temp',
-          value: `${Math.max(...temps).toFixed(1)}°C • ${cToF(Math.max(...temps))}°F`,
-          inline: true,
-        },
-        {
-          name: 'Low Temp',
-          value: `${Math.min(...temps).toFixed(1)}°C • ${cToF(Math.min(...temps))}°F`,
-          inline: true,
-        },
-        {
-          name: 'Max Wind Speed',
-          value: `${Math.max(...winds).toFixed(1)} m/s • ${mpsToMph(Math.max(...winds))} mph`,
-          inline: true,
-        },
-        {
-          name: 'Max Wave Height',
-          value: `${Math.max(...waves).toFixed(2)} m • ${metersToFeet(Math.max(...waves))} ft`,
-          inline: true,
-        },
-        {
-          name: 'Sky Conditions',
-          value: summarizeSky(clouds),
-          inline: true,
-        },
+        { name: 'High Temp', value: `${Math.max(...temps).toFixed(1)}°C • ${cToF(Math.max(...temps))}°F`, inline: true },
+        { name: 'Low Temp', value: `${Math.min(...temps).toFixed(1)}°C • ${cToF(Math.min(...temps))}°F`, inline: true },
+        { name: 'Max Wind Speed', value: `${Math.max(...winds).toFixed(1)} m/s • ${mpsToMph(Math.max(...winds))} mph`, inline: true },
+        { name: 'Max Wave Height', value: `${Math.max(...waves).toFixed(2)} m • ${metersToFeet(Math.max(...waves))} ft`, inline: true },
+        { name: 'Sky Conditions', value: summarizeSky(clouds), inline: true },
         {
           name: 'Water Temp (avg)',
           value: `${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C • ${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F`,
-          inline: true,
+          inline: true
         },
-        {
-          name: 'Marine Alerts',
-          value: getAlertStatus(),
-          inline: false,
-        }
+        { name: 'Marine Alerts', value: getAlertStatus(), inline: false }
       )
       .setFooter({
         text: 'Summary based on data from Storm Glass & NOAA (weather.gov)',

@@ -63,3 +63,18 @@ module.exports = {
     console.log(`[🔁] Marine advisory check scheduled every ${CHECK_INTERVAL_MINUTES} minutes`);
   }
 };
+// TEST RUN (comment out after)
+if (require.main === module) {
+    const { Client, GatewayIntentBits } = require('discord.js');
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    require('dotenv').config();
+  
+    client.once('ready', () => {
+      console.log(`✅ Logged in as ${client.user.tag}`);
+      // Run the check once manually
+      checkMarineAdvisory(client);
+    });
+  
+    client.login(process.env.DISCORD_TOKEN);
+  }
+// TEST RUN (comment out after)  

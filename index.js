@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const cron = require('node-cron');
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
-
+const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
@@ -27,6 +27,8 @@ client.once('ready', () => {
       timezone: process.env.TIMEZONE || 'UTC'
     });
   });
+  scheduleMarineAdvisoryCheck(client);
+  console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
 });
 
 client.login(process.env.DISCORD_TOKEN);

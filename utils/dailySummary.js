@@ -19,8 +19,6 @@ const weatherParams = [
   'waterTemperature'
 ];
 
-const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
-
 function cToF(c) {
   return ((c * 9) / 5 + 32).toFixed(1);
 }
@@ -61,22 +59,29 @@ function getAlertStatus() {
 
 async function postDailySummary(client) {
   try {
+    const start = new Date();
+    start.setDate(start.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    const isoStart = start.toISOString();
+    const isoEnd = end.toISOString();
+
+    const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
     const headers = { Authorization: apiKey };
     const res = await fetch(forecastEndpoint, { headers });
     const data = await res.json();
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const targetDate = yesterday.toLocaleDateString('en-US', { timeZone: timezone });
-// Test date for today
-//const targetDate = new Date().toLocaleDateString('en-US', { timeZone: timezone });
+    const targetDate = start.toLocaleDateString('en-US', { timeZone: timezone });
 
-const forecast = data.hours.filter(h => {
-    const local = new Date(h.time).toLocaleDateString('en-US', { timeZone: timezone });
-    return local === targetDate;
-  });
-  console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
+    const forecast = data.hours.filter(h => {
+      const local = new Date(h.time).toLocaleDateString('en-US', { timeZone: timezone });
+      return local === targetDate;
+    });
 
+    console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
 
     if (forecast.length === 0) throw new Error('No forecast data available');
 
@@ -88,15 +93,14 @@ const forecast = data.hours.filter(h => {
 
     const startTime = forecast[0].time;
     const endTime = forecast[forecast.length - 1].time;
-    
-    // Format date like "April 30th, 2025"
+
     const formattedDate = new Date(startTime).toLocaleDateString('en-US', {
       timeZone: timezone,
       month: 'long',
       day: 'numeric',
       year: 'numeric',
     });
-    
+
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
       .setDescription(
@@ -153,29 +157,26 @@ const forecast = data.hours.filter(h => {
       })
       .setColor(0x0077be)
       .setTimestamp();
-    
-
 
     const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
     await channel.send({ embeds: [embed] });
     console.log('[✅] Daily summary posted.');
-
   } catch (err) {
     console.error('[❌] Failed to post daily summary:', err.message);
   }
 }
 
 module.exports = { postDailySummary };
+
 // TEST RUN (for manual execution via CLI)
 if (require.main === module) {
-    const { Client, GatewayIntentBits } = require('discord.js');
-    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-  
-    client.once('ready', () => {
-      console.log(`✅ Logged in as ${client.user.tag}`);
-      postDailySummary(client);
-    });
-  
-    client.login(process.env.DISCORD_TOKEN);
-  }
-  
+  const { Client, GatewayIntentBits } = require('discord.js');
+  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+  client.once('ready', () => {
+    console.log(`✅ Logged in as ${client.user.tag}`);
+    postDailySummary(client);
+  });
+
+  client.login(process.env.DISCORD_TOKEN);
+}

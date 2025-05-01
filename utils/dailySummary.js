@@ -36,6 +36,7 @@ function formatTime12(date) {
     timeZone: timezone,
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 }
 
@@ -65,6 +66,7 @@ function getAlertStatus() {
   }
 }
 
+// 🔁 Token fallback logic
 async function fetchWithFallback(url) {
   const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
@@ -72,7 +74,7 @@ async function fetchWithFallback(url) {
   const resPrimary = await fetch(url, { headers: headersPrimary });
   if (resPrimary.status !== 429) return resPrimary;
 
-  console.warn('[⚠️] Primary API token rate-limited — using secondary token.');
+  console.warn('[⚠️] Primary token rate-limited — using secondary token.');
   return await fetch(url, { headers: headersSecondary });
 }
 

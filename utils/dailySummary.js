@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
 
 const lat = parseFloat(process.env.LAT);
@@ -59,20 +60,18 @@ function getAlertStatus() {
 
 async function postDailySummary(client) {
   try {
-    // Build the 24-hour window for yesterday in ISO format
     const start = new Date();
     start.setDate(start.getDate() - 1);
-    start.setHours(0, 0, 0, 0);
+    start.setUTCHours(0, 0, 0, 0);
 
     const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCHours(23, 59, 59, 999);
 
     const isoStart = start.toISOString();
     const isoEnd = end.toISOString();
 
     const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
     const headers = { Authorization: apiKey };
-
     const res = await fetch(forecastEndpoint, { headers });
     const data = await res.json();
 
@@ -81,7 +80,7 @@ async function postDailySummary(client) {
       return time >= start && time <= end;
     });
 
-    console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
+    console.log("Filtered timestamps:", forecast.map(h => h.time));
 
     if (forecast.length === 0) throw new Error('No forecast data available');
 
@@ -168,7 +167,7 @@ async function postDailySummary(client) {
 
 module.exports = { postDailySummary };
 
-// TEST RUN (for manual execution via CLI)
+// TEST RUN (manual CLI)
 if (require.main === module) {
   const { Client, GatewayIntentBits } = require('discord.js');
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });

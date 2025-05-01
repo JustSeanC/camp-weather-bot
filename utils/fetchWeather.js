@@ -84,6 +84,11 @@ function getGreetingEmoji(hour) {
   if (hour < 17) return '🌞 Good Afternoon';
   return '🌇 Good Evening';
 }
+function formatHour(hour) {
+  const suffix = hour < 12 || hour === 24 ? 'AM' : 'PM';
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:00 ${suffix}`;
+}
 
 async function fetchForecastEmbed() {
   const headers = { Authorization: apiKey };
@@ -174,7 +179,11 @@ const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
       { name: 'Date', value: dateString, inline: true },
       { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
       { name: 'Greeting', value: greeting, inline: true },
-      { name: 'Forecast Window', value: `${startHour}:00 → ${endHour === 7 ? '07:00 (next day)' : `${endHour}:00`} EDT`, inline: false },
+      {
+      name: 'Forecast Window',
+      value: `${formatHour(startHour)} → ${endHour === 7 ? '7:00 AM (next day)' : formatHour(endHour)} EDT`,
+      inline: false
+      },
       { name: 'Temperature', value: `${((tempMin - 32) * 5 / 9).toFixed(1)}°C / ${tempMin}°F → ${((tempMax - 32) * 5 / 9).toFixed(1)}°C / ${tempMax}°F`, inline: true },
       { name: 'Wind', value: `${windMin.toFixed(1)} m/s / ${mpsToMph(windMin)} mph → ${windMax.toFixed(1)} m/s / ${mpsToMph(windMax)} mph\nDirection: ${degreesToCompass(windAvgDir)} avg`, inline: true },
       { name: 'Cloud Cover', value: `${cloudMin}% → ${cloudMax}%`, inline: true },

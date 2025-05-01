@@ -85,54 +85,73 @@ const targetDate = new Date().toLocaleDateString('en-US', { timeZone: timezone }
     const waterTemps = forecast.map(h => h.waterTemperature?.noaa ?? 0);
 
     const startTime = forecast[0].time;
-const endTime = forecast[forecast.length - 1].time;
-
-const embed = new EmbedBuilder()
-  .setTitle(`📋 Daily Summary for ${targetDate}`)
-  .setDescription(`Time range: ${new Date(startTime).toLocaleTimeString('en-US', { timeZone: timezone })} → ${new Date(endTime).toLocaleTimeString('en-US', { timeZone: timezone })}`)
-  .addFields(
-    {
-      name: 'High Temp',
-      value: `${Math.max(...temps)}°C • ${cToF(Math.max(...temps))}°F`,
-      inline: true
-    },
-    {
-      name: 'Low Temp',
-      value: `${Math.min(...temps)}°C • ${cToF(Math.min(...temps))}°F`,
-      inline: true
-    },
-    {
-      name: 'Max Wind Speed',
-      value: `${Math.max(...winds).toFixed(1)} m/s • ${mpsToMph(Math.max(...winds))} mph`,
-      inline: true
-    },
-    {
-      name: 'Max Wave Height',
-      value: `${Math.max(...waves).toFixed(2)} m • ${metersToFeet(Math.max(...waves))} ft`,
-      inline: true
-    },
-    {
-      name: 'Sky Conditions',
-      value: summarizeSky(clouds),
-      inline: true
-    },
-    {
-      name: 'Water Temp (avg)',
-      value: `${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C • ${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F`,
-      inline: true
-    },
-    {
-      name: 'Marine Alerts',
-      value: getAlertStatus(),
-      inline: false
-    }
-  )
-  .setFooter({
-    text: 'Summary based on data from Storm Glass & NOAA (weather.gov)',
-    iconURL: 'https://www.noaa.gov/sites/default/files/2022-03/noaa_emblem_logo-2022.png'
-  })
-  .setColor(0x0077be)
-  .setTimestamp();
+    const endTime = forecast[forecast.length - 1].time;
+    
+    // Format date like "April 30th, 2025"
+    const formattedDate = new Date(startTime).toLocaleDateString('en-US', {
+      timeZone: timezone,
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    
+    const embed = new EmbedBuilder()
+      .setTitle(`📋 Daily Summary for ${formattedDate}`)
+      .setDescription(
+        `Time range: ${new Date(startTime).toLocaleTimeString('en-US', {
+          timeZone: timezone,
+          hour: 'numeric',
+          minute: '2-digit',
+        })} → ${new Date(endTime).toLocaleTimeString('en-US', {
+          timeZone: timezone,
+          hour: 'numeric',
+          minute: '2-digit',
+        })}\n\n`
+      )
+      .addFields(
+        {
+          name: 'High Temp',
+          value: `${Math.max(...temps).toFixed(1)}°C • ${cToF(Math.max(...temps))}°F`,
+          inline: true,
+        },
+        {
+          name: 'Low Temp',
+          value: `${Math.min(...temps).toFixed(1)}°C • ${cToF(Math.min(...temps))}°F`,
+          inline: true,
+        },
+        {
+          name: 'Max Wind Speed',
+          value: `${Math.max(...winds).toFixed(1)} m/s • ${mpsToMph(Math.max(...winds))} mph`,
+          inline: true,
+        },
+        {
+          name: 'Max Wave Height',
+          value: `${Math.max(...waves).toFixed(2)} m • ${metersToFeet(Math.max(...waves))} ft`,
+          inline: true,
+        },
+        {
+          name: 'Sky Conditions',
+          value: summarizeSky(clouds),
+          inline: true,
+        },
+        {
+          name: 'Water Temp (avg)',
+          value: `${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C • ${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F`,
+          inline: true,
+        },
+        {
+          name: 'Marine Alerts',
+          value: getAlertStatus(),
+          inline: false,
+        }
+      )
+      .setFooter({
+        text: 'Summary based on data from Storm Glass & NOAA (weather.gov)',
+        iconURL: 'https://www.noaa.gov/sites/default/files/2022-03/noaa_emblem_logo-2022.png',
+      })
+      .setColor(0x0077be)
+      .setTimestamp();
+    
 
 
     const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);

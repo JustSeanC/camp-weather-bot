@@ -7,11 +7,8 @@ const lng = parseFloat(process.env.LNG);
 const apiKey = process.env.STORMGLASS_API_KEY;
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
-const marineZone = 'ANZ538';
-
 const weatherParams = [
   'airTemperature',
-  'precipitation',
   'windSpeed',
   'windDirection',
   'cloudCover',
@@ -19,10 +16,10 @@ const weatherParams = [
   'waterTemperature'
 ];
 
+
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
-const nwsAlertEndpoint = `https://api.weather.gov/alerts/active/zone/${marineZone}`;
 
 function degreesToCompass(deg) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -88,104 +85,87 @@ function getGreetingEmoji(hour) {
   return '🌇 Good Evening';
 }
 
-async function fetchAdvisory() {
-  try {
-    const res = await fetch(nwsAlertEndpoint);
-    const data = await res.json();
-    const advisory = data.features.find(alert =>
-      alert.properties.event.toLowerCase().includes('small craft')
-    );
-
-    if (advisory) {
-      const { event, description, ends } = advisory.properties;
-      const endTime = new Date(ends).toLocaleString('en-US', {
-        timeZone: timezone,
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-
-      return {
-        text: `⚠️ **${event}**\nExpires: ${endTime}\n${description.split('\n')[0]}`,
-        hasAdvisory: true
-      };
-    } else {
-      return {
-        text: '✅ No advisories in effect.',
-        hasAdvisory: false
-      };
-    }
-  } catch (err) {
-    console.error('Failed to fetch advisory:', err);
-    return {
-      text: '⚠️ Unable to retrieve advisory data.',
-      hasAdvisory: false
-    };
-  }
-}
-
 async function fetchForecastEmbed() {
   const headers = { Authorization: apiKey };
-
-  const [forecastRes, tideRes, astronomyRes, advisoryInfo] = await Promise.all([
+  const [forecastRes, tideRes, astronomyRes] = await Promise.all([
     fetch(forecastEndpoint, { headers }).then(r => r.json()),
     fetch(tideEndpoint, { headers }).then(r => r.json()),
     fetch(astronomyEndpoint, { headers }).then(r => r.json()),
-    fetchAdvisory()
   ]);
 
   const now = new Date();
-  const hour = now.getHours();
+  const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
 
-  if (!forecastRes.hours) {
-    console.error("❌ Stormglass forecast data missing or invalid:", forecastRes);
-    throw new Error("Invalid forecast data returned from Stormglass");
+  let startHour, endHour;
+  if (localHour < 7) {
+    startHour = 5;
+    endHour = 7;
+  } else if (localHour < 12) {
+    startHour = 7;
+    endHour = 12;
+  } else if (localHour < 17) {
+    startHour = 12;
+    endHour = 17;
+  } else {
+    startHour = 17;
+    endHour = 7; // next day
   }
 
-  const hourIndex = forecastRes.hours.findIndex(h => new Date(h.time).getHours() === hour);
-  const current = forecastRes.hours[hourIndex];
+  const forecastWindow = forecastRes.hours.filter(h => {
+    const hour = new Date(h.time).getHours();
+    if (startHour < endHour) return hour >= startHour && hour < endHour;
+    return hour >= startHour || hour < endHour;
+  });
 
-  const tempC = current.airTemperature?.noaa ?? 'N/A';
-  const tempF = cToF(tempC);
-  const precip = current.precipitation?.noaa ?? 'N/A';
-  const wind = current.windSpeed?.noaa ?? 'N/A';
-  const windDir = current.windDirection?.noaa ?? 0;
-  const cloud = current.cloudCover?.noaa ?? 'N/A';
-  const wave = current.waveHeight?.noaa ?? 'N/A';
-  const waterTempC = current.waterTemperature?.noaa ?? 'N/A';
-  const waterTempF = cToF(waterTempC);
+  if (forecastWindow.length === 0) {
+    throw new Error("No forecast data for current window");
+  }
 
-  const tideSummary = tideRes.data
-    .slice(0, 4)
-    .map(t => {
-      const time = new Date(t.time).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: timezone,
-      });
-      return `${t.type} at ${time}`;
-    })
-    .join('\n');
+  const tempsF = forecastWindow.map(h => cToF(h.airTemperature?.noaa ?? 0));
+  const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);
+  const waveHeights = forecastWindow.map(h => h.waveHeight?.noaa ?? 0);
+  const clouds = forecastWindow.map(h => h.cloudCover?.noaa ?? 0);
+  const weatherTypes = clouds.map(c => {
+    if (c < 10) return 'Clear';
+    if (c < 40) return 'Mostly Sunny';
+    if (c < 70) return 'Partly Cloudy';
+    if (c < 90) return 'Cloudy';
+    return 'Overcast';
+  });
+  const waterTempC = forecastWindow[0].waterTemperature?.noaa ?? 'N/A';
+  const waterTempF = waterTempC !== 'N/A' ? cToF(waterTempC) : 'N/A';
+  const windDirs = forecastWindow.map(h => h.windDirection?.noaa ?? 0);
+  const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
+  const tempMin = Math.min(...tempsF);
+  const tempMax = Math.max(...tempsF);
+  const windMin = Math.min(...winds);
+  const windMax = Math.max(...winds);
+  const waveMin = Math.min(...waveHeights);
+  const waveMax = Math.max(...waveHeights);
+  const cloudMin = Math.min(...clouds);
+  const cloudMax = Math.max(...clouds);
 
-    const astro = astronomyRes.data;
-    const sunrise = new Date(Date.parse(astro.sunrise)).toLocaleTimeString('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    
-    const sunset = new Date(Date.parse(astro.sunset)).toLocaleTimeString('en-US', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    
+  const waveAlert = waveMax >= 1.22;
+  const windAlert = windMax >= 8.05;
+  const showAdvisory = waveAlert || windAlert;
+
+  const astro = astronomyRes.data;
+  const sunrise = new Date(Date.parse(astro.sunrise)).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const sunset = new Date(Date.parse(astro.sunset)).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const moonPhase = astro.moonPhase?.text || 'Unknown';
   const moonEmoji = getMoonEmoji(moonPhase);
 
+  const greeting = getGreetingEmoji(localHour);
   const dateString = now.toLocaleDateString();
-  const greeting = getGreetingEmoji(hour);
   const localTime = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
   const utcTime = now.toUTCString().match(/\d{2}:\d{2}/)[0];
+
+  const tideSummary = tideRes.data.slice(0, 4).map(t => {
+    const time = new Date(t.time).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZone: timezone,
+    });
+    return `${t.type} at ${time}`;
+  }).join('\n');
 
   const embed = new EmbedBuilder()
     .setTitle(`🌤️ Camp Tockwogh Forecast`)
@@ -193,22 +173,28 @@ async function fetchForecastEmbed() {
       { name: 'Date', value: dateString, inline: true },
       { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
       { name: 'Greeting', value: greeting, inline: true },
-      { name: 'Air Temp', value: `${tempC}°C / ${tempF}°F`, inline: true },
+      { name: 'Forecast Window', value: `${startHour}:00 → ${endHour === 7 ? '07:00 (next day)' : `${endHour}:00`} EDT`, inline: false },
+      { name: 'Temperature', value: `${((tempMin - 32) * 5 / 9).toFixed(1)}°C / ${tempMin}°F → ${((tempMax - 32) * 5 / 9).toFixed(1)}°C / ${tempMax}°F`, inline: true },
+      { name: 'Wind', value: `${windMin.toFixed(1)} m/s / ${mpsToMph(windMin)} mph → ${windMax.toFixed(1)} m/s / ${mpsToMph(windMax)} mph\nDirection: ${degreesToCompass(windAvgDir)} avg`, inline: true },
+      { name: 'Cloud Cover', value: `${cloudMin}% → ${cloudMax}%`, inline: true },
+      { name: 'Sky Conditions', value: [...new Set(weatherTypes)].join(', '), inline: true },
+      { name: 'Wave Height', value: `${waveMin.toFixed(2)} m / ${metersToFeet(waveMin)} ft → ${waveMax.toFixed(2)} m / ${metersToFeet(waveMax)} ft`, inline: true },
       { name: 'Water Temp', value: `${waterTempC}°C / ${waterTempF}°F`, inline: true },
-      { name: 'Precipitation', value: `${precip} mm / ${(precip / 25.4).toFixed(2)} in`, inline: true },
-      { name: 'Wind', value: `${wind} m/s / ${mpsToMph(wind)} mph ${degreesToCompass(windDir)}`, inline: true },
-      { name: 'Cloud Cover', value: `${cloud}%`, inline: true },
-      { name: 'Wave Height', value: isNaN(wave) ? 'N/A' : `${wave} m / ${metersToFeet(wave)} ft`, inline: true },
       { name: 'Tides', value: tideSummary || 'No data', inline: false },
-      { name: 'Marine Advisory', value: advisoryInfo.text, inline: false },
       { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },
       { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: false },
-      { name: 'Next Forecast', value: getNextForecastTime(), inline: false }
+      { name: 'Next Forecast', value: getNextForecastTime(), inline: false },
+      ...(showAdvisory ? [
+        {
+          name: '⚠️ Marine Advisory Forecast',
+          value: 'Potential for Small Craft Advisory.\nConditions may be hazardous — use caution.',
+          inline: false
+        }
+      ] : [])
     )
-    .setColor(advisoryInfo.hasAdvisory ? 0xffa500 : 0x00ff00)
+    .setFooter({ text: 'Forecast data from Storm Glass. Advisory logic is estimated.' })
+    .setColor(showAdvisory ? 0xffa500 : 0x00ff00)
     .setTimestamp();
 
   return embed;
 }
-
-module.exports = { fetchForecastEmbed };

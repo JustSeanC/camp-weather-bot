@@ -60,16 +60,22 @@ async function checkMarineAdvisory(client) {
     } = alert.properties;
 
     const embed = new EmbedBuilder()
-      .setTitle(`⚠️ ${event}`)
-      .setDescription(`**${headline}**\n\n${description.split('\n')[0]}`)
-      .addFields(
-        { name: 'Area', value: areaDesc, inline: false },
-        { name: 'Issued', value: new Date(sent).toLocaleString('en-US', { timeZone: 'America/New_York' }), inline: true },
-        { name: 'Expires', value: ends ? new Date(ends).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Unknown', inline: true }
-      )
-      .setColor(0xffa500)
-      .setFooter({ text: instruction || 'Use caution on the water.' })
-      .setTimestamp();
+  .setTitle(`⚠️ ${event} ⚠️`)
+  .setDescription(`**${headline}**\n\n${description.split('\n')[0]}`)
+  .addFields(
+    { name: 'Area', value: areaDesc, inline: false },
+    { name: 'Issued', value: new Date(sent).toLocaleString('en-US', { timeZone: 'America/New_York' }), inline: true },
+    { name: 'Expires', value: ends ? new Date(ends).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Unknown', inline: true },
+    ...(instruction ? [{ name: 'Instructions', value: instruction, inline: false }] : [])
+  )
+  .setColor(0xffa500)
+  .setFooter({
+    text: 'Data provided by NOAA (weather.gov)',
+    iconURL: 'https://www.noaa.gov/sites/default/files/2022-03/noaa_emblem_logo-2022.png'
+  })
+
+    .setTimestamp();
+
 
     const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
     await channel.send({ content: '@here', embeds: [embed] });
@@ -88,17 +94,18 @@ module.exports = {
   }
 };
 // TEST RUN (comment out after)
-if (require.main === module) {
+/*if (require.main === module) {
     const { Client, GatewayIntentBits } = require('discord.js');
     const client = new Client({ intents: [GatewayIntentBits.Guilds] });
     require('dotenv').config();
-  
+
     client.once('ready', () => {
-      console.log(`✅ Logged in as ${client.user.tag}`);
-      // Run the check once manually
-      checkMarineAdvisory(client);
+        console.log(`✅ Logged in as ${client.user.tag}`);
+        // Run the check once manually
+        checkMarineAdvisory(client);
     });
-  
+
     client.login(process.env.DISCORD_TOKEN);
-  }
+}
+*/
 // TEST RUN (comment out after)  

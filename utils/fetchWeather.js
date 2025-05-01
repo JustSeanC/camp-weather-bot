@@ -198,3 +198,4 @@ async function fetchForecastEmbed() {
 
   return embed;
 }
+module.exports = { fetchForecastEmbed };

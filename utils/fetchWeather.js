@@ -4,7 +4,6 @@ const { EmbedBuilder } = require('discord.js');
 
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
-const apiKey = process.env.STORMGLASS_API_KEY;
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
 const weatherParams = [
@@ -16,10 +15,21 @@ const weatherParams = [
   'waterTemperature'
 ];
 
-
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
+
+// Fallback logic
+async function fetchWithFallback(url) {
+  const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
+  const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
+
+  const resPrimary = await fetch(url, { headers: headersPrimary });
+  if (resPrimary.status !== 429) return resPrimary;
+
+  console.warn('[⚠️] Primary token rate-limited, trying secondary token...');
+  return await fetch(url, { headers: headersSecondary });
+}
 
 function degreesToCompass(deg) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -38,10 +48,18 @@ function cToF(c) {
   return ((c * 9) / 5 + 32).toFixed(1);
 }
 
+function formatHour12(hour) {
+  const date = new Date();
+  date.setHours(hour, 0, 0);
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: timezone
+  });
+}
+
 function getNextForecastTime() {
   const now = new Date();
-
-  // Get current hour in NY timezone explicitly
   const localHour = parseInt(now.toLocaleString('en-US', {
     hour: 'numeric',
     hour12: false,
@@ -64,7 +82,6 @@ function getNextForecastTime() {
   return `**${local} ${timezone} / ${utc} UTC**`;
 }
 
-
 function getMoonEmoji(phase) {
   const map = {
     'New Moon': '🌑',
@@ -84,18 +101,12 @@ function getGreetingEmoji(hour) {
   if (hour < 17) return '🌞 Good Afternoon';
   return '🌇 Good Evening';
 }
-function formatHour(hour) {
-  const suffix = hour < 12 || hour === 24 ? 'AM' : 'PM';
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${hour12}:00 ${suffix}`;
-}
 
 async function fetchForecastEmbed() {
-  const headers = { Authorization: apiKey };
   const [forecastRes, tideRes, astronomyRes] = await Promise.all([
-    fetch(forecastEndpoint, { headers }).then(r => r.json()),
-    fetch(tideEndpoint, { headers }).then(r => r.json()),
-    fetch(astronomyEndpoint, { headers }).then(r => r.json()),
+    fetchWithFallback(forecastEndpoint).then(r => r.json()),
+    fetchWithFallback(tideEndpoint).then(r => r.json()),
+    fetchWithFallback(astronomyEndpoint).then(r => r.json()),
   ]);
 
   const now = new Date();
@@ -137,6 +148,7 @@ async function fetchForecastEmbed() {
     if (c < 90) return 'Cloudy';
     return 'Overcast';
   });
+
   const waterTempC = forecastWindow[0].waterTemperature?.noaa ?? 'N/A';
   const waterTempF = waterTempC !== 'N/A' ? cToF(waterTempC) : 'N/A';
   const windDirs = forecastWindow.map(h => h.windDirection?.noaa ?? 0);
@@ -154,11 +166,10 @@ async function fetchForecastEmbed() {
   const windAlert = windMax >= 8.05;
   const showAdvisory = waveAlert || windAlert;
 
-const astro = astronomyRes.data[0];
- const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
-
+  const astro = astronomyRes.data[0];
+  const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const greeting = getGreetingEmoji(localHour);
@@ -180,9 +191,9 @@ const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
       { name: 'Time', value: `${localTime} EDT / ${utcTime} UTC`, inline: true },
       { name: 'Greeting', value: greeting, inline: true },
       {
-      name: 'Forecast Window',
-      value: `${formatHour(startHour)} → ${endHour === 7 ? '7:00 AM (next day)' : formatHour(endHour)} EDT`,
-      inline: false
+        name: 'Forecast Window',
+        value: `${formatHour12(startHour)} → ${endHour === 7 ? '7:00 AM (next day)' : formatHour12(endHour)} EDT`,
+        inline: false
       },
       { name: 'Temperature', value: `${((tempMin - 32) * 5 / 9).toFixed(1)}°C / ${tempMin}°F → ${((tempMax - 32) * 5 / 9).toFixed(1)}°C / ${tempMax}°F`, inline: true },
       { name: 'Wind', value: `${windMin.toFixed(1)} m/s / ${mpsToMph(windMin)} mph → ${windMax.toFixed(1)} m/s / ${mpsToMph(windMax)} mph\nDirection: ${degreesToCompass(windAvgDir)} avg`, inline: true },
@@ -194,13 +205,11 @@ const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
       { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },
       { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: false },
       { name: 'Next Forecast', value: getNextForecastTime(), inline: false },
-      ...(showAdvisory ? [
-        {
-          name: '⚠️ Marine Advisory Forecast',
-          value: 'Potential for Small Craft Advisory.\nConditions may be hazardous — use caution.',
-          inline: false
-        }
-      ] : [])
+      ...(showAdvisory ? [{
+        name: '⚠️ Marine Advisory Forecast',
+        value: 'Potential for Small Craft Advisory.\nConditions may be hazardous — use caution.',
+        inline: false
+      }] : [])
     )
     .setFooter({ text: 'Forecast data from Storm Glass. Advisory logic is estimated.' })
     .setColor(showAdvisory ? 0xffa500 : 0x00ff00)
@@ -208,4 +217,5 @@ const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
 
   return embed;
 }
+
 module.exports = { fetchForecastEmbed };

@@ -19,7 +19,7 @@ const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
 
-// Fallback logic
+// 🔁 Fallback token logic for all endpoints
 async function fetchWithFallback(url) {
   const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
@@ -27,7 +27,7 @@ async function fetchWithFallback(url) {
   const resPrimary = await fetch(url, { headers: headersPrimary });
   if (resPrimary.status !== 429) return resPrimary;
 
-  console.warn('[⚠️] Primary token rate-limited, trying secondary token...');
+  console.warn(`[⚠️] Rate limit hit on primary token for ${url}. Trying secondary...`);
   return await fetch(url, { headers: headersSecondary });
 }
 
@@ -54,6 +54,7 @@ function formatHour12(hour) {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
     timeZone: timezone
   });
 }
@@ -70,7 +71,7 @@ function getNextForecastTime() {
   if (localHour < 7) nextHour = 7;
   else if (localHour < 12) nextHour = 12;
   else if (localHour < 17) nextHour = 17;
-  else nextHour = 7; // next morning
+  else nextHour = 7;
 
   const nextDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   nextDate.setHours(nextHour, 0, 0, 0);
@@ -124,7 +125,7 @@ async function fetchForecastEmbed() {
     endHour = 17;
   } else {
     startHour = 17;
-    endHour = 7; // next day
+    endHour = 7;
   }
 
   const forecastWindow = forecastRes.hours.filter(h => {

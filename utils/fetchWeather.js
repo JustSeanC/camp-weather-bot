@@ -61,27 +61,45 @@ function formatHour12(hour) {
 
 function getNextForecastTime() {
   const now = new Date();
-  const localHour = parseInt(now.toLocaleString('en-US', {
-    hour: 'numeric',
-    hour12: false,
-    timeZone: timezone
-  }));
+  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const hour = localNow.getHours();
 
   let nextHour;
-  if (localHour < 7) nextHour = 7;
-  else if (localHour < 12) nextHour = 12;
-  else if (localHour < 17) nextHour = 17;
-  else nextHour = 7;
+  let isTomorrow = false;
 
-  const nextDate = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-  nextDate.setHours(nextHour, 0, 0, 0);
-  if (nextHour === 7 && localHour >= 17) nextDate.setDate(nextDate.getDate() + 1);
+  if (hour < 7) {
+    nextHour = 7;
+  } else if (hour < 12) {
+    nextHour = 12;
+  } else if (hour < 17) {
+    nextHour = 17;
+  } else {
+    nextHour = 7;
+    localNow.setDate(localNow.getDate() + 1);
+    isTomorrow = true;
+  }
 
-  const local = nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
-  const utc = nextDate.toUTCString().match(/\d{2}:\d{2}/)[0];
+  localNow.setHours(nextHour, 0, 0, 0);
 
-  return `**${local} ${timezone} / ${utc} UTC**`;
+  const localFormatted = localNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone
+  });
+
+  const utcFormatted = localNow.toUTCString().match(/\d{2}:\d{2}/)[0];
+
+  const dateFormatted = localNow.toLocaleDateString('en-US', {
+    timeZone: timezone,
+    month: 'short',
+    day: 'numeric'
+  });
+
+  return isTomorrow
+    ? `**${localFormatted} ${timezone} / ${utcFormatted} UTC** on ${dateFormatted}`
+    : `**${localFormatted} ${timezone} / ${utcFormatted} UTC**`;
 }
+
 
 function getMoonEmoji(phase) {
   const map = {

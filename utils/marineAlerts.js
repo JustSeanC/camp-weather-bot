@@ -78,8 +78,14 @@ async function checkMarineAdvisory(client) {
 
 
     const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-    await channel.send({ content: '@here', embeds: [embed] });
-
+    const pingTarget = process.env.MARINE_ALERT_PING?.trim();
+    await channel.send({
+      content: pingTarget || null,
+      embeds: [embed]
+    });
+//If ping is required, modify .env via nano .env and add @here or <@USER_ID> or <@&ROLE_ID> to MARINE_ALERT_PING
+    // Example: MARINE_ALERT_PING="@here" or MARINE_ALERT_PING="<@123456789012345678>"    
+    // Example: MARINE_ALERT_PING="<@&123456789012345678>"
     console.log(`[✔] Posted new marine advisory: ${event}`);
   } catch (err) {
     console.error('[❌] Failed to fetch/post marine advisory:', err.message);

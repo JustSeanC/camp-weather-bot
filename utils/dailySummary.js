@@ -133,3 +133,16 @@ async function postDailySummary(client) {
 }
 
 module.exports = { postDailySummary };
+// TEST RUN (for manual execution via CLI)
+if (require.main === module) {
+    const { Client, GatewayIntentBits } = require('discord.js');
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  
+    client.once('ready', () => {
+      console.log(`✅ Logged in as ${client.user.tag}`);
+      postDailySummary(client);
+    });
+  
+    client.login(process.env.DISCORD_TOKEN);
+  }
+  

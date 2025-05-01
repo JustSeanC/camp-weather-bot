@@ -1,13 +1,23 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
+
+// Load last ID from disk
+let lastAlertId = null;
+try {
+  const saved = JSON.parse(fs.readFileSync(alertFilePath, 'utf8'));
+  lastAlertId = saved.id || null;
+} catch {
+  lastAlertId = null;
+}
 
 const ALERT_ZONE = 'ANZ538';
 const ALERT_API = `https://api.weather.gov/alerts/active/zone/${ALERT_ZONE}`;
 const CHECK_INTERVAL_MINUTES = 5;
 const DISCORD_CHANNEL_ID = process.env.MARINE_ALERT_CHANNEL_ID;
-
-let lastAlertId = null;
 
 async function checkMarineAdvisory(client) {
   try {
@@ -36,6 +46,7 @@ async function checkMarineAdvisory(client) {
     if (alert.id === lastAlertId) return; // already alerted
 
     lastAlertId = alert.id;
+    fs.writeFileSync(alertFilePath, JSON.stringify({ id: alert.id }, null, 2));
 
     const {
       event,

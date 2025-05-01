@@ -59,6 +59,7 @@ function getAlertStatus() {
 
 async function postDailySummary(client) {
   try {
+    // Build the 24-hour window for yesterday in ISO format
     const start = new Date();
     start.setDate(start.getDate() - 1);
     start.setHours(0, 0, 0, 0);
@@ -71,21 +72,14 @@ async function postDailySummary(client) {
 
     const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
     const headers = { Authorization: apiKey };
+
     const res = await fetch(forecastEndpoint, { headers });
     const data = await res.json();
 
-    const start = new Date();
-start.setDate(start.getDate() - 1);
-start.setHours(0, 0, 0, 0);
-
-const end = new Date(start);
-end.setHours(23, 59, 59, 999);
-
-const forecast = data.hours.filter(h => {
-  const time = new Date(h.time);
-  return time >= start && time <= end;
-});
-
+    const forecast = data.hours.filter(h => {
+      const time = new Date(h.time);
+      return time >= start && time <= end;
+    });
 
     console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
 

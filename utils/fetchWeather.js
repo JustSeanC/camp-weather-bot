@@ -149,10 +149,11 @@ async function fetchForecastEmbed() {
   const windAlert = windMax >= 8.05;
   const showAdvisory = waveAlert || windAlert;
 
-  const astro = astronomyRes.data;
-  const sunrise = new Date(Date.parse(astro.sunrise)).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const sunset = new Date(Date.parse(astro.sunset)).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const moonPhase = astro.moonPhase?.text || 'Unknown';
+const astro = astronomyRes.data[0];
+ const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
+
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const greeting = getGreetingEmoji(localHour);

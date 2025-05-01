@@ -74,12 +74,18 @@ async function postDailySummary(client) {
     const res = await fetch(forecastEndpoint, { headers });
     const data = await res.json();
 
-    const targetDate = start.toLocaleDateString('en-US', { timeZone: timezone });
+    const start = new Date();
+start.setDate(start.getDate() - 1);
+start.setHours(0, 0, 0, 0);
 
-    const forecast = data.hours.filter(h => {
-      const local = new Date(h.time).toLocaleDateString('en-US', { timeZone: timezone });
-      return local === targetDate;
-    });
+const end = new Date(start);
+end.setHours(23, 59, 59, 999);
+
+const forecast = data.hours.filter(h => {
+  const time = new Date(h.time);
+  return time >= start && time <= end;
+});
+
 
     console.log("Timestamps returned:", data.hours.map(h => new Date(h.time).toLocaleString('en-US', { timeZone: timezone })));
 

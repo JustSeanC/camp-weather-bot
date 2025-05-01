@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const cron = require('node-cron');
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
+const { postDailySummary } = require('./utils/dailySummary');
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
@@ -29,6 +30,18 @@ client.once('ready', () => {
   });
   scheduleMarineAdvisoryCheck(client);
   console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
+    // Daily summary post at 12:01 AM (covering full previous day)
+cron.schedule('1 0 * * *', async () => {
+  try {
+    await postDailySummary(client);
+  } catch (err) {
+    console.error('❌ Error sending daily summary:', err);
+  }
+}, {
+  timezone: process.env.TIMEZONE || 'America/New_York'
+});
+
+  
 });
 
 client.login(process.env.DISCORD_TOKEN);

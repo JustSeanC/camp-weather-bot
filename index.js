@@ -27,18 +27,6 @@ for (const file of commandFiles) {
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  // Register slash commands globally
-  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-  try {
-    console.log('🔄 Refreshing slash commands...');
-    await rest.put(
-      Routes.applicationCommands(client.user.id),
-      { body: commands }
-    );
-    console.log('✅ Slash commands registered.');
-  } catch (err) {
-    console.error('❌ Error registering commands:', err);
-  }
 
   // ⏰ Schedule forecast posts at 7 AM, 12 PM, 5 PM Eastern Time
   const times = ['0 7 * * *', '0 12 * * *', '0 17 * * *'];

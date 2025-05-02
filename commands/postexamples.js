@@ -38,22 +38,25 @@ module.exports = {
 
     // Forecast Embed
     const forecastEmbed = new EmbedBuilder()
-      .setTitle('🌤️ Camp Tockwogh Forecast (Example)')
-      .setDescription('This is an example of the regularly scheduled weather forecast embed.')
-      .addFields(
-        { name: 'Time', value: '12:00 PM EDT / 16:00 UTC', inline: true },
-        { name: 'Forecast Window', value: '12:00 PM → 5:00 PM EDT', inline: false },
-        { name: 'Temperature', value: '75°F (23.9°C) → 82°F (27.8°C)', inline: true },
-        { name: 'Wind', value: '5.0 mph (2.2 m/s) → 12.0 mph (5.4 m/s)\nDirection: NE avg', inline: true },
-        { name: 'Sky Conditions', value: 'Partly Cloudy', inline: true },
-        { name: 'Wave Height', value: '1.2 ft (0.37 m) → 2.0 ft (0.61 m)', inline: true },
-        { name: 'Water Temp', value: '72.0°F (22.2°C)', inline: true },
-        { name: 'Sunrise / Sunset', value: '🌅 5:58 AM / 🌇 8:04 PM', inline: false },
-        { name: 'Moon Phase', value: '🌖 Waning Gibbous', inline: false },
-        { name: 'Next Forecast', value: '**5:00 PM EDT / 21:00 UTC**', inline: false }
-      )
-      .setFooter({ text: 'Forecast data from Storm Glass. Advisory logic is estimated.' })
-      .setColor(0x00ff00);
+  .setTitle('🌤️ Camp Tockwogh Forecast (Example)')
+  .addFields(
+    { name: 'Date', value: 'July 15, 2025', inline: true },
+    { name: 'Current Time', value: '7:00 AM EDT / 11:00 UTC\n🌅 Good Morning', inline: true },
+    { name: 'Forecast Window', value: '7:00 AM → 12:00 PM EDT', inline: false },
+    { name: 'Temperature', value: '🔻 71°F (21.7°C)\n🔺 78°F (25.6°C)', inline: true },
+    { name: 'Humidity', value: '🔻 65%\n🔺 78%', inline: true },
+    { name: 'Wind', value: '🔻 4.0 mph (1.8 m/s)\n🔺 10.0 mph (4.5 m/s)\n➡️ Direction: NE avg', inline: true },
+    { name: 'Wave Height', value: '🔻 1.0 ft (0.30 m)\n🔺 1.8 ft (0.55 m)', inline: true },
+    { name: 'Water Temp', value: '🔻 72.0°F (22.2°C)\n🔺 74.2°F (23.4°C)', inline: true },
+    { name: 'Sky Conditions', value: 'Mostly Sunny, Partly Cloudy', inline: true },
+    { name: 'Tides', value: 'High at 6:42 AM\nLow at 12:31 PM\nHigh at 7:03 PM\nLow at 1:25 AM', inline: false },
+    { name: 'Sunrise / Sunset', value: '🌅 5:58 AM / 🌇 8:04 PM', inline: true },
+    { name: 'Moon Phase', value: '🌖 Waning Gibbous', inline: true },
+    { name: 'Next Forecast', value: '**12:00 PM EDT / 16:00 UTC**', inline: false }
+  )
+  .setFooter({ text: 'Forecast data from Storm Glass. Advisory logic is estimated.' })
+  .setColor(0x00ff00);
+
 
     // Summary Embed
     const summaryEmbed = new EmbedBuilder()

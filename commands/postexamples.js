@@ -2,31 +2,39 @@ const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require('discord.js')
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('postexamples')
-    .setDescription('Post example embeds to specified channels')
-    .addChannelOption(option =>
-      option.setName('forecast_channel')
-        .setDescription('Channel for the forecast example')
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .addChannelOption(option =>
-      option.setName('summary_channel')
-        .setDescription('Channel for the daily summary example')
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    )
-    .addChannelOption(option =>
-      option.setName('advisory_channel')
-        .setDescription('Channel for the small craft advisory example')
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true)
-    ),
+  .setName('postexamples')
+  .setDescription('Post example embeds to specified channels')
+  .addChannelOption(option =>
+    option.setName('forecast_channel')
+      .setDescription('Channel for the forecast example')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  )
+  .addChannelOption(option =>
+    option.setName('summary_channel')
+      .setDescription('Channel for the daily summary example')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  )
+  .addChannelOption(option =>
+    option.setName('advisory_channel')
+      .setDescription('Channel for the small craft advisory example')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  )
+  .addChannelOption(option =>
+    option.setName('severe_alert_channel')
+      .setDescription('Channel for the severe weather alert example')
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(true)
+  ),
+
 
   async execute(interaction) {
     const forecastChannel = interaction.options.getChannel('forecast_channel');
     const summaryChannel = interaction.options.getChannel('summary_channel');
     const advisoryChannel = interaction.options.getChannel('advisory_channel');
+    const severeChannel = interaction.options.getChannel('severe_alert_channel');
 
     // Forecast Embed
     const forecastEmbed = new EmbedBuilder()
@@ -76,6 +84,20 @@ module.exports = {
       .setFooter({ text: 'Data provided by NOAA (weather.gov)' })
       .setColor(0xffa500);
 
+      // Severe Weather Embed
+const severeEmbed = new EmbedBuilder()
+  .setTitle('🌪️ Severe Thunderstorm Warning')
+  .setDescription('**Severe Thunderstorm Warning for Kent County**\n\nWinds in excess of 60 MPH and quarter-sized hail expected.')
+  .addFields(
+    { name: 'Severity', value: 'Severe', inline: true },
+    { name: 'Affected Area', value: 'Kent County, MD', inline: true },
+    { name: 'Expires', value: '5:45 PM EDT', inline: false },
+    { name: 'Instructions', value: 'Take shelter in a sturdy building. Avoid windows. Do not drive through flooded roadways.', inline: false }
+  )
+  .setColor(0xff0000)
+  .setFooter({ text: 'Alert provided by National Weather Service' })
+  .setTimestamp();
+
       await forecastChannel.send({
         content: '**Example Post for:** Weather Forecast',
         embeds: [forecastEmbed]
@@ -90,7 +112,12 @@ module.exports = {
         content: '**Example Post for:** Small Craft Advisory',
         embeds: [advisoryEmbed]
       });
-      
+
+      await severeChannel.send({
+      content: '**Example Post for:** Severe Weather Alert',
+      embeds: [severeEmbed]
+      });
+
 
     await interaction.reply({ content: '✅ Example embeds sent to selected channels.', ephemeral: true });
   }

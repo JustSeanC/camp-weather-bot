@@ -7,7 +7,7 @@ const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { postDailySummary } = require('./utils/dailySummary');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
-
+const { scheduleSevereAlertCheck } = require('./utils/severeAlerts');
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
@@ -48,6 +48,9 @@ client.once('ready', async () => {
   // 🌀 Marine advisory checks
   scheduleMarineAdvisoryCheck(client);
   console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
+// Severe Weather Alerts Check
+scheduleSevereAlertCheck(client);
+console.log('⏰ Scheduled severe weather checks every 10 minutes.');
 
   // 📋 Daily summary at 12:01 AM Eastern
   cron.schedule('1 0 * * *', async () => {

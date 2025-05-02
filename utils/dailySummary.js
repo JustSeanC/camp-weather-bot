@@ -22,21 +22,17 @@ const weatherParams = [
 function cToF(c) {
   return ((c * 9) / 5 + 32).toFixed(1);
 }
-
 function mpsToMph(ms) {
   return (ms * 2.23694).toFixed(1);
 }
-
 function metersToFeet(m) {
   return (m * 3.28084).toFixed(1);
 }
-
 function formatTime12(date) {
   return new Date(date).toLocaleTimeString('en-US', {
     timeZone: timezone,
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
   });
 }
 
@@ -66,7 +62,6 @@ function getAlertStatus() {
   }
 }
 
-// 🔁 Token fallback logic
 async function fetchWithFallback(url) {
   const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
@@ -74,7 +69,7 @@ async function fetchWithFallback(url) {
   const resPrimary = await fetch(url, { headers: headersPrimary });
   if (resPrimary.status !== 429) return resPrimary;
 
-  console.warn('[⚠️] Primary token rate-limited — using secondary token.');
+  console.warn('[⚠️] Primary API token rate-limited — using secondary token.');
   return await fetch(url, { headers: headersSecondary });
 }
 
@@ -90,11 +85,15 @@ async function postDailySummary(client) {
     const isoStart = start.toISOString();
     const isoEnd = end.toISOString();
 
-    const endpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
-    const res = await fetchWithFallback(endpoint);
-    const data = await res.json();
+    const forecastURL = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
+    const astronomyURL = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}&start=${isoStart}`;
 
-    const forecast = data.hours.filter(h => {
+    const [forecastRes, astronomyRes] = await Promise.all([
+      fetchWithFallback(forecastURL).then(r => r.json()),
+      fetchWithFallback(astronomyURL).then(r => r.json())
+    ]);
+
+    const forecast = forecastRes.hours.filter(h => {
       const time = new Date(h.time);
       return time >= start && time <= end;
     });
@@ -117,20 +116,27 @@ async function postDailySummary(client) {
       year: 'numeric',
     });
 
+    const skyCondition = summarizeSky(clouds);
+
+    const astro = astronomyRes.data[0];
+    const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+    const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
-      .setDescription(`Time range: ${formatTime12(startTime)} → ${formatTime12(endTime)}\n\n`)
+      .setDescription(`Time range: ${formatTime12(startTime)} → ${formatTime12(endTime)}\n`)
       .addFields(
-        { name: 'High Temp', value: `${Math.max(...temps).toFixed(1)}°C • ${cToF(Math.max(...temps))}°F`, inline: true },
-        { name: 'Low Temp', value: `${Math.min(...temps).toFixed(1)}°C • ${cToF(Math.min(...temps))}°F`, inline: true },
-        { name: 'Max Wind Speed', value: `${Math.max(...winds).toFixed(1)} m/s • ${mpsToMph(Math.max(...winds))} mph`, inline: true },
-        { name: 'Max Wave Height', value: `${Math.max(...waves).toFixed(2)} m • ${metersToFeet(Math.max(...waves))} ft`, inline: true },
-        { name: 'Sky Conditions', value: summarizeSky(clouds), inline: true },
+        { name: 'High Temp', value: `${cToF(Math.max(...temps))}°F (${Math.max(...temps).toFixed(1)}°C)`, inline: true },
+        { name: 'Low Temp', value: `${cToF(Math.min(...temps))}°F (${Math.min(...temps).toFixed(1)}°C)`, inline: true },
+        { name: 'Max Wind Speed', value: `${mpsToMph(Math.max(...winds))} mph (${Math.max(...winds).toFixed(1)} m/s)`, inline: true },
+        { name: 'Max Wave Height', value: `${metersToFeet(Math.max(...waves))} ft (${Math.max(...waves).toFixed(2)} m)`, inline: true },
+        { name: 'Sky Condition', value: skyCondition, inline: true },
         {
           name: 'Water Temp (avg)',
-          value: `${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C • ${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F`,
+          value: `${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F (${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C)`,
           inline: true
         },
+        { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: false },
         { name: 'Marine Alerts', value: getAlertStatus(), inline: false }
       )
       .setFooter({
@@ -149,16 +155,3 @@ async function postDailySummary(client) {
 }
 
 module.exports = { postDailySummary };
-
-// TEST RUN (manual CLI)
-if (require.main === module) {
-  const { Client, GatewayIntentBits } = require('discord.js');
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-  client.once('ready', () => {
-    console.log(`✅ Logged in as ${client.user.tag}`);
-    postDailySummary(client);
-  });
-
-  client.login(process.env.DISCORD_TOKEN);
-}

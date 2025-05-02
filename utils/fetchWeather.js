@@ -19,7 +19,7 @@ const weatherParams = [
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
-
+const { getCachedAstronomyData } = require('./cacheAstronomy');
 // Fallback logic
 async function fetchWithFallback(url) {
   const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
@@ -113,11 +113,12 @@ function getGreetingEmoji(hour) {
 }
 
 async function fetchForecastEmbed() {
-  const [forecastRes, tideRes, astronomyRes] = await Promise.all([
-    fetchWithFallback(forecastEndpoint).then(r => r.json()),
-    fetchWithFallback(tideEndpoint).then(r => r.json()),
-    fetchWithFallback(astronomyEndpoint).then(r => r.json()),
-  ]);
+  const [forecastRes, tideRes] = await Promise.all([
+  fetchWithFallback(forecastEndpoint).then(r => r.json()),
+  fetchWithFallback(tideEndpoint).then(r => r.json()),
+]);
+
+const astronomyRes = await getCachedAstronomyData(astronomyEndpoint);
 
   const now = new Date();
   const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));

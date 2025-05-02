@@ -12,7 +12,8 @@ const weatherParams = [
   'windDirection',
   'cloudCover',
   'waveHeight',
-  'waterTemperature'
+  'waterTemperature',
+  'humidity'
 ];
 
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
@@ -74,6 +75,27 @@ function getNextForecastTime() {
     ? `**${localFormatted} EDT / ${utcFormatted} UTC** on ${dateFormatted}`
     : `**${localFormatted} EDT / ${utcFormatted} UTC**`;
 }
+function getCurrentForecastWindowLabel(hour) {
+  function formatHour12(h) {
+    const d = new Date();
+    d.setHours(h, 0, 0);
+    return d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: timezone
+    });
+  }
+
+  let next;
+  if (hour < 7) next = 7;
+  else if (hour < 12) next = 12;
+  else if (hour < 17) next = 17;
+  else next = 7;
+
+  const endLabel = (hour >= 17) ? '7:00 AM (next day)' : formatHour12(next);
+  return `${formatHour12(hour)} → ${endLabel} EDT`;
+}
 
 function getMoonEmoji(phase) {
   const map = {
@@ -100,16 +122,32 @@ async function fetchForecastEmbed() {
   const now = new Date();
   const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
 
-  let startHour, endHour;
-  if (localHour < 7) { startHour = 5; endHour = 7; }
-  else if (localHour < 12) { startHour = 7; endHour = 12; }
-  else if (localHour < 17) { startHour = 12; endHour = 17; }
-  else { startHour = 17; endHour = 7; }
+ function getNextScheduledHour(hour) {
+  if (hour < 7) return 7;
+  if (hour < 12) return 12;
+  if (hour < 17) return 17;
+  return 31; // special value to signal 7AM next day
+}
+
+const startHour = localHour;
+const nextScheduled = getNextScheduledHour(localHour);
+
+let endHour = nextScheduled;
+let spanOverMidnight = false;
+if (nextScheduled === 31) {
+  endHour = 7;
+  spanOverMidnight = true;
+}
+
 
   const forecastWindow = forecastRes.hours.filter(h => {
-    const hour = new Date(h.time).getHours();
-    return (startHour < endHour) ? hour >= startHour && hour < endHour : hour >= startHour || hour < endHour;
-  });
+  const date = new Date(h.time);
+  const hour = date.getHours();
+  const isToday = new Date(date.toLocaleString('en-US', { timeZone: timezone })).getDate() === localNow.getDate();
+  if (!spanOverMidnight) return hour >= startHour && hour < endHour;
+  return hour >= startHour || (hour < endHour && !isToday);
+});
+
 
   if (forecastWindow.length === 0) throw new Error("No forecast data for current window");
 
@@ -124,9 +162,13 @@ async function fetchForecastEmbed() {
     if (c < 90) return 'Cloudy';
     return 'Overcast';
   });
+const humidities = forecastWindow.map(h => h.humidity?.noaa ?? 0);
+const humidityMin = Math.min(...humidities);
+const humidityMax = Math.max(...humidities);
 
-  const waterTempC = forecastWindow[0].waterTemperature?.noaa ?? 'N/A';
-  const waterTempF = waterTempC !== 'N/A' ? cToF(waterTempC) : 'N/A';
+  const waterTemps = forecastWindow.map(h => h.waterTemperature?.noaa ?? 0);
+const waterTempMin = Math.min(...waterTemps);
+const waterTempMax = Math.max(...waterTemps);
   const windDirs = forecastWindow.map(h => h.windDirection?.noaa ?? 0);
   const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
   const tempMin = Math.min(...tempsF);
@@ -164,15 +206,21 @@ async function fetchForecastEmbed() {
       { name: 'Date', value: dateString, inline: true },
       { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
       {
-        name: 'Forecast Window',
-        value: `${formatHour12(startHour)} → ${endHour === 7 ? '7:00 AM (next day)' : formatHour12(endHour)} EDT`,
-        inline: false
-      },
+  name: 'Forecast Window',
+  value: getCurrentForecastWindowLabel(localHour),
+  inline: false
+},
+
       {
         name: 'Temperature',
         value: `🔻 ${tempMin}°F (${((tempMin - 32) * 5 / 9).toFixed(1)}°C)\n🔺 ${tempMax}°F (${((tempMax - 32) * 5 / 9).toFixed(1)}°C)`,
         inline: true
       },
+      {
+  name: 'Humidity',
+  value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`,
+  inline: true
+},
       {
         name: 'Wind',
         value: `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)\n🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)\n➡️ Direction: ${degreesToCompass(windAvgDir)} avg`,
@@ -184,10 +232,10 @@ async function fetchForecastEmbed() {
         inline: true
       },
       {
-        name: 'Water Temp',
-        value: `${waterTempF}°F (${waterTempC}°C)`,
-        inline: true
-      },
+  name: 'Water Temp',
+  value: `🔻 ${cToF(waterTempMin)}°F (${waterTempMin.toFixed(1)}°C)\n🔺 ${cToF(waterTempMax)}°F (${waterTempMax.toFixed(1)}°C)`,
+  inline: true
+},
       {
         name: 'Sky Conditions',
         value: [...new Set(weatherTypes)].join(', '),

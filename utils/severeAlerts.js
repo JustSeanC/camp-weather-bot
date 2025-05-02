@@ -64,8 +64,13 @@ async function checkSevereAlerts(client) {
         .setFooter({ text: 'Alert provided by National Weather Service' })
         .setTimestamp();
 
-      const channel = await client.channels.fetch(process.env.SEVERE_ALERTS_CHANNEL || process.env.DISCORD_CHANNEL_ID);
-      await channel.send({ embeds: [embed] });
+const channel = await client.channels.fetch(process.env.SEVERE_ALERT_ID || process.env.DISCORD_CHANNEL_ID);
+const pingText = process.env.SEVERE_ALERT_PING?.trim();
+if (pingText) {
+  await channel.send({ content: pingText });
+}
+
+await channel.send({ embeds: [embed] });
 
       console.log(`📢 Posted new severe weather alert: ${event}`);
     }

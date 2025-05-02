@@ -1,17 +1,19 @@
+require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
+const cron = require('node-cron');
 
-const SEVERE_ZONE = 'MDZ017';
+const SEVERE_ZONE = 'MDZ017'; // Kent County, MD (Betterton/Worton)
 const ALERT_API = `https://api.weather.gov/alerts/active?zone=${SEVERE_ZONE}`;
 
 let postedAlertIds = new Set();
 
 function severityColor(severity) {
   switch (severity) {
-    case 'Extreme': return 0x8B0000; // Dark Red
-    case 'Severe': return 0xFF0000; // Red
-    case 'Moderate': return 0xFFA500; // Orange
-    default: return 0xFFFF00; // Yellow
+    case 'Extreme': return 0x8B0000;
+    case 'Severe': return 0xFF0000;
+    case 'Moderate': return 0xFFA500;
+    default: return 0xFFFF00;
   }
 }
 
@@ -41,7 +43,10 @@ async function checkSevereAlerts(client) {
 
       postedAlertIds.add(id);
 
-      const { event, severity, headline, description, instruction, areaDesc, ends } = alert.properties;
+      const {
+        event, severity, headline,
+        description, instruction, areaDesc, ends
+      } = alert.properties;
 
       const embed = new EmbedBuilder()
         .setTitle(`${emojiForEvent(event)} ${event}`)
@@ -53,13 +58,13 @@ async function checkSevereAlerts(client) {
           ...(instruction ? [{ name: 'Instructions', value: instruction.slice(0, 1000) }] : []),
           ...(ends ? [{
             name: 'Expires',
-            value: new Date(ends).toLocaleString('en-US', { timeZone: 'America/New_York' })
+            value: new Date(ends).toLocaleString('en-US', { timeZone: process.env.TIMEZONE || 'America/New_York' })
           }] : [])
         )
         .setFooter({ text: 'Alert provided by National Weather Service' })
         .setTimestamp();
 
-      const channel = await client.channels.fetch(process.env.DISCORD_CHANNEL_ID);
+      const channel = await client.channels.fetch(process.env.SEVERE_ALERTS_CHANNEL || process.env.DISCORD_CHANNEL_ID);
       await channel.send({ embeds: [embed] });
 
       console.log(`📢 Posted new severe weather alert: ${event}`);
@@ -70,7 +75,6 @@ async function checkSevereAlerts(client) {
 }
 
 function scheduleSevereAlertCheck(client) {
-  const cron = require('node-cron');
   cron.schedule('*/10 * * * *', () => checkSevereAlerts(client), {
     timezone: process.env.TIMEZONE || 'America/New_York'
   });

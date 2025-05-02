@@ -1,12 +1,23 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 const cron = require('node-cron');
 
-const SEVERE_ZONE = 'MDZ017'; // Kent County, MD (Betterton/Worton)
+const SEVERE_ZONE = 'MDZ017'; // Kent County, MD
 const ALERT_API = `https://api.weather.gov/alerts/active?zone=${SEVERE_ZONE}`;
+const alertFilePath = path.join(__dirname, '../data/lastSevereAlerts.json');
 
+// Load last IDs from disk
 let postedAlertIds = new Set();
+try {
+  const raw = fs.readFileSync(alertFilePath, 'utf-8');
+  const parsed = JSON.parse(raw);
+  postedAlertIds = new Set(parsed);
+} catch {
+  postedAlertIds = new Set();
+}
 
 function severityColor(severity) {
   switch (severity) {
@@ -29,19 +40,19 @@ function emojiForEvent(event) {
 
 async function checkSevereAlerts(client) {
   try {
-    const res = await fetch(ALERT_API);
+    const res = await fetch(ALERT_API, { headers: { 'User-Agent': 'CampWeatherBot/1.0' } });
     const data = await res.json();
 
-    const alerts = (data.features || []).filter(alert => {
-      const severity = alert.properties.severity;
-      return ['Moderate', 'Severe', 'Extreme'].includes(severity);
-    });
+    const alerts = (data.features || []).filter(alert =>
+      ['Moderate', 'Severe', 'Extreme'].includes(alert.properties.severity)
+    );
 
     for (const alert of alerts) {
       const id = alert.id;
       if (postedAlertIds.has(id)) continue;
 
       postedAlertIds.add(id);
+      fs.writeFileSync(alertFilePath, JSON.stringify([...postedAlertIds], null, 2));
 
       const {
         event, severity, headline,
@@ -64,18 +75,18 @@ async function checkSevereAlerts(client) {
         .setFooter({ text: 'Alert provided by National Weather Service' })
         .setTimestamp();
 
-const channel = await client.channels.fetch(process.env.SEVERE_ALERT_ID || process.env.DISCORD_CHANNEL_ID);
-const pingText = process.env.SEVERE_ALERT_PING?.trim();
-if (pingText) {
-  await channel.send({ content: pingText });
-}
+      const channel = await client.channels.fetch(process.env.SEVERE_ALERT_ID || process.env.DISCORD_CHANNEL_ID);
+      const pingText = process.env.SEVERE_ALERT_PING?.trim();
+      if (pingText) {
+        await channel.send({ content: pingText });
+      }
 
-await channel.send({ embeds: [embed] });
+      await channel.send({ embeds: [embed] });
 
       console.log(`📢 Posted new severe weather alert: ${event}`);
     }
   } catch (err) {
-    console.error('❌ Error checking severe weather alerts:', err);
+    console.error('❌ Error checking severe weather alerts:', err.message);
   }
 }
 

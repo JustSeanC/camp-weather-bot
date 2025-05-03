@@ -98,7 +98,7 @@ const isoEnd = end.toUTC().toISO();
       fetchWithFallback(astronomyURL)
     ]);
     
-    console.log('[DEBUG] forecastRes:', JSON.stringify(forecastRes, null, 2));
+   // console.log('[DEBUG] forecastRes:', JSON.stringify(forecastRes, null, 2));
     const forecast = forecastRes.hours.filter(h => {
       const time = DateTime.fromISO(h.time);
       return time >= start && time <= end;

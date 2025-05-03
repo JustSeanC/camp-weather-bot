@@ -53,29 +53,31 @@ function formatHour12(hour) {
 function getNextForecastTime() {
   const now = new Date();
   const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-  const hour = localNow.getHours();
-  let nextHour, isTomorrow = false;
+  const localHour = localNow.getHours();
+  let targetHour, isTomorrow = false;
 
-  if (hour < 7) nextHour = 7;
-  else if (hour < 12) nextHour = 12;
-  else if (hour < 17) nextHour = 17;
+  if (localHour < 7) targetHour = 7;
+  else if (localHour < 12) targetHour = 12;
+  else if (localHour < 17) targetHour = 17;
   else {
-    nextHour = 7;
-    localNow.setDate(localNow.getDate() + 1);
+    targetHour = 7;
     isTomorrow = true;
+    localNow.setDate(localNow.getDate() + 1);
   }
 
-  // Set to exact nextHour:00:00
-  localNow.setHours(nextHour, 0, 0, 0);
+  // Set to exact forecast hour in local time
+  localNow.setHours(targetHour, 0, 0, 0);
 
-  const localFormatted = localNow.toLocaleTimeString('en-US', {
+  // Build a UTC date from the exact local time
+  const localISOString = localNow.toLocaleString('en-US', { timeZone: timezone });
+  const exactLocalTime = new Date(localISOString);
+  const utcFormatted = exactLocalTime.toUTCString().match(/\d{2}:\d{2}/)[0];
+  const localFormatted = exactLocalTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: timezone
   });
-
-  const utcFormatted = localNow.toUTCString().match(/\d{2}:\d{2}/)[0];
-  const dateFormatted = localNow.toLocaleDateString('en-US', {
+  const dateFormatted = exactLocalTime.toLocaleDateString('en-US', {
     timeZone: timezone,
     month: 'short',
     day: 'numeric'
@@ -85,6 +87,7 @@ function getNextForecastTime() {
     ? `**${localFormatted} EDT / ${utcFormatted} UTC** on ${dateFormatted}`
     : `**${localFormatted} EDT / ${utcFormatted} UTC**`;
 }
+
 
 function getCurrentForecastWindowLabel(hour) {
   function formatHour12(h) {

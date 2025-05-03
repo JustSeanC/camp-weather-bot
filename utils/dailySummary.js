@@ -2,6 +2,7 @@ require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
 const fs = require('fs');
+const { DateTime } = require('luxon');
 const path = require('path');
 
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
@@ -75,15 +76,13 @@ async function fetchWithFallback(url) {
 
 async function postDailySummary(client) {
   try {
-    const start = new Date();
-    start.setDate(start.getDate() - 1);
-    start.setUTCHours(0, 0, 0, 0);
+    const start = DateTime.now().setZone(timezone).minus({ days: 1 }).startOf('day');
+const end = start.endOf('day');
 
-    const end = new Date(start);
-    end.setUTCHours(23, 59, 59, 999);
 
-    const isoStart = start.toISOString();
-    const isoEnd = end.toISOString();
+const isoStart = start.toUTC().toISO();
+const isoEnd = end.toUTC().toISO();
+
 
     const forecastURL = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
     const astronomyURL = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}&start=${isoStart}`;
@@ -94,9 +93,10 @@ async function postDailySummary(client) {
     ]);
 
     const forecast = forecastRes.hours.filter(h => {
-      const time = new Date(h.time);
+      const time = DateTime.fromISO(h.time);
       return time >= start && time <= end;
     });
+    
 
     if (forecast.length === 0) throw new Error('No forecast data available');
 
@@ -109,22 +109,19 @@ async function postDailySummary(client) {
     const startTime = forecast[0].time;
     const endTime = forecast[forecast.length - 1].time;
 
-    const formattedDate = new Date(startTime).toLocaleDateString('en-US', {
-      timeZone: timezone,
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    const formattedDate = DateTime.fromISO(startTime).setZone(timezone).toLocaleString(DateTime.DATE_FULL);
+
 
     const skyCondition = summarizeSky(clouds);
 
     const astro = astronomyRes.data[0];
-    const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-    const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+    const sunrise = DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('h:mm a');
+    const sunset = DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('h:mm a');
+
 
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
-      .setDescription(`Time range: ${formatTime12(startTime)} → ${formatTime12(endTime)}\n`)
+      .setDescription(`Time range: ${DateTime.fromISO(startTime).setZone(timezone).toFormat('h:mm a')} → ${DateTime.fromISO(endTime).setZone(timezone).toFormat('h:mm a')}\n`)
       .addFields(
         { name: 'High Temp', value: `${cToF(Math.max(...temps))}°F (${Math.max(...temps).toFixed(1)}°C)`, inline: true },
         { name: 'Low Temp', value: `${cToF(Math.min(...temps))}°F (${Math.min(...temps).toFixed(1)}°C)`, inline: true },

@@ -55,18 +55,37 @@ function getNextForecastTime() {
   const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   const hour = localNow.getHours();
   let nextHour, isTomorrow = false;
+
   if (hour < 7) nextHour = 7;
   else if (hour < 12) nextHour = 12;
   else if (hour < 17) nextHour = 17;
-  else { nextHour = 7; localNow.setDate(localNow.getDate() + 1); isTomorrow = true; }
+  else {
+    nextHour = 7;
+    localNow.setDate(localNow.getDate() + 1);
+    isTomorrow = true;
+  }
+
+  // Set to exact nextHour:00:00
   localNow.setHours(nextHour, 0, 0, 0);
-  const localFormatted = localNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: timezone });
+
+  const localFormatted = localNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone
+  });
+
   const utcFormatted = localNow.toUTCString().match(/\d{2}:\d{2}/)[0];
-  const dateFormatted = localNow.toLocaleDateString('en-US', { timeZone: timezone, month: 'short', day: 'numeric' });
+  const dateFormatted = localNow.toLocaleDateString('en-US', {
+    timeZone: timezone,
+    month: 'short',
+    day: 'numeric'
+  });
+
   return isTomorrow
     ? `**${localFormatted} EDT / ${utcFormatted} UTC** on ${dateFormatted}`
     : `**${localFormatted} EDT / ${utcFormatted} UTC**`;
 }
+
 function getCurrentForecastWindowLabel(hour) {
   function formatHour12(h) {
     const d = new Date();

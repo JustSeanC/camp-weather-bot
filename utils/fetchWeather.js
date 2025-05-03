@@ -114,6 +114,7 @@ const astronomyRes = await getCachedAstronomyData(astronomyEndpoint);
 
   const now = new Date();
   const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
+  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
 
  function getNextScheduledHour(hour) {
   if (hour < 7) return 7;

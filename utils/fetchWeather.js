@@ -82,22 +82,36 @@ function getOrdinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+const xml2js = require('xml2js');
+
 async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
-  const dateParam = DateTime.utc().toFormat('yyyyLLdd_HHmmss') + 'Z';
-  const url = `https://aviationweather.gov/api/data/metar?ids=${station}&format=json&taf=false&date=${dateParam}`;
+  const url = `https://aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=${station}&hoursBeforeNow=1`;
 
   try {
     const res = await fetch(url);
-    const json = await res.json();
-    const metar = json?.data?.[0];
-    if (!metar) return null;
+    const xml = await res.text();
 
-    const tempC = parseFloat(metar.temp);
-    const humidity = parseFloat(metar.rel_humidity);
+    const parsed = await xml2js.parseStringPromise(xml);
+    const metars = parsed.response.data[0].METAR;
 
-    if (isNaN(tempC) || isNaN(humidity)) return null;
+    if (!metars || metars.length === 0) {
+      console.warn(`[⚠️] No METAR data found for ${station}`);
+      return null;
+    }
 
-    return { tempC, humidity };
+    const metar = metars[0];
+    const tempC = parseFloat(metar.temp_c?.[0]);
+    const dewpointC = parseFloat(metar.dewpoint_c?.[0]);
+
+    if (isNaN(tempC) || isNaN(dewpointC)) return null;
+
+    // Calculate relative humidity from temp/dewpoint
+    const rh = 100 * (Math.exp((17.625 * dewpointC) / (243.04 + dewpointC)) / Math.exp((17.625 * tempC) / (243.04 + tempC)));
+
+    return {
+      tempC,
+      humidity: parseFloat(rh.toFixed(1))
+    };
   } catch (err) {
     console.error('[❌] METAR fetch failed:', err);
     return null;

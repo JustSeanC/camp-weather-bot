@@ -68,11 +68,17 @@ async function fetchWithFallback(url) {
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
 
   const resPrimary = await fetch(url, { headers: headersPrimary });
-  if (resPrimary.status !== 429) return resPrimary;
+  const dataPrimary = await resPrimary.json();
 
-  console.warn('[⚠️] Primary API token rate-limited — using secondary token.');
-  return await fetch(url, { headers: headersSecondary });
+  if (resPrimary.status === 429 || dataPrimary?.errors?.key === 'API quota exceeded') {
+    console.warn('[⚠️] Primary API token rate-limited or quota exceeded — using secondary token.');
+    const resSecondary = await fetch(url, { headers: headersSecondary });
+    return resSecondary.json();
+  }
+
+  return dataPrimary;
 }
+
 
 async function postDailySummary(client) {
   try {

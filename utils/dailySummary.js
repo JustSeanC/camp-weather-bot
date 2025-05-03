@@ -6,7 +6,7 @@ const { DateTime } = require('luxon');
 const path = require('path');
 
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
-const fetchWithFallback = require('./utils/fetchWithFallback');
+const fetchWithFallback = require('./fetchWithFallback');
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';

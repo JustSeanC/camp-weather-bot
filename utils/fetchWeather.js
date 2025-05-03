@@ -4,8 +4,6 @@ const { EmbedBuilder } = require('discord.js');
 const { DateTime } = require('luxon');
 const fetchWithFallback = require('./fetchWithFallback');
 const { getCachedAstronomyData } = require('./cacheAstronomy');
-const DEBUG_WEBHOOK_URL = 'https://discord.com/api/webhooks/1368332136297267301/-Ta8_ueZEwCv1OQ3qpT-xNKNpLUdGDkikQ4w0PYc6tLLgwnld8kJ6yRru1NDXH22dWlA';
-// debug logging for stuff
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -55,31 +53,6 @@ function getNextForecastTime() {
 
   return `**${localTime} EDT / ${utcTime} UTC** on ${dateFormatted}`;
 }
-// debug code posting to discord
-async function postDebugToDiscord(title, jsonData) {
-  if (!DEBUG_WEBHOOK_URL) return;
-
-  const jsonString = JSON.stringify(jsonData, null, 2);
-  const chunks = [];
-
-  for (let i = 0; i < jsonString.length; i += 1900) {
-    chunks.push(jsonString.slice(i, i + 1900));
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const content = `\`\`\`json\n${chunks[i]}\n\`\`\``;
-    await fetch(DEBUG_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'Weather Debug',
-        content: `**${title}${chunks.length > 1 ? ` (Part ${i + 1}/${chunks.length})` : ''}**\n${content}`
-      })
-    });
-  }
-}
-
-
 function getCurrentForecastWindowLabel(hour) {
   const now = DateTime.now().setZone(timezone);
   let next = hour < 7 ? 7 : hour < 12 ? 12 : hour < 17 ? 17 : 7;
@@ -165,19 +138,29 @@ async function fetchForecastEmbed() {
   const windDirs = forecastWindow.map(h => h.windDirection?.noaa).filter(v => typeof v === 'number');
   const windAvgDir = windDirs.length ? windDirs.reduce((a, b) => a + b, 0) / windDirs.length : 0;
   
-  const tempsF = forecastWindow.map(h => h.airTemperature?.noaa).filter(v => typeof v === 'number');
-  const tempMin = tempsF.length ? cToF(Math.min(...tempsF)) : '0';
-  const tempMax = tempsF.length ? cToF(Math.max(...tempsF)) : '0';
-  // air temp debug - helps with averages
-  await postDebugToDiscord(
-    '🌡️ DEBUG: Full raw airTemperature data from all sources',
-    forecastWindow.map(h => ({
-      time: h.time,
-      sources: h.airTemperature
-    }))
-  );
-  
-  
+  // Cleaned temperature data: only include hours where all 3 sources exist and are within ±5°C
+const tempsCleaned = forecastWindow
+.map(h => {
+  const noaa = h.airTemperature?.noaa;
+  const ecmwf = h.airTemperature?.ecmwf;
+  const sg = h.airTemperature?.sg;
+  const vals = [noaa, ecmwf, sg].filter(v => typeof v === 'number');
+
+  if (vals.length === 3) {
+    const range = Math.max(...vals) - Math.min(...vals);
+    if (range <= 5) {
+      return vals.reduce((a, b) => a + b, 0) / 3;
+    }
+  }
+  return null;
+})
+.filter(v => typeof v === 'number');
+
+const tempMinC = tempsCleaned.length ? Math.min(...tempsCleaned) : 0;
+const tempMaxC = tempsCleaned.length ? Math.max(...tempsCleaned) : 0;
+const tempMin = cToF(tempMinC);
+const tempMax = cToF(tempMaxC);
+
   const windMin = winds.length ? Math.min(...winds) : 0;
   const windMax = winds.length ? Math.max(...winds) : 0;
   
@@ -214,7 +197,36 @@ async function fetchForecastEmbed() {
     if (avgCloud < 90) return 'Cloudy';
     return 'Overcast';
   }
+  //Get Feels Like
+  function computeHeatIndex(celsius, humidity) {
+    const tempF = (celsius * 9) / 5 + 32;
+    if (tempF < 80 || humidity < 40) return null;
   
+    const HI =
+      -42.379 +
+      2.04901523 * tempF +
+      10.14333127 * humidity -
+      0.22475541 * tempF * humidity -
+      0.00683783 * tempF * tempF -
+      0.05481717 * humidity * humidity +
+      0.00122874 * tempF * tempF * humidity +
+      0.00085282 * tempF * humidity * humidity -
+      0.00000199 * tempF * tempF * humidity * humidity;
+  
+    return HI.toFixed(1);
+  }
+  const feelsLikeTemps = forecastWindow.map(h => {
+    const t = h.airTemperature?.noaa;
+    const hmd = h.humidity?.noaa;
+    if (typeof t === 'number' && typeof hmd === 'number') {
+      const hi = computeHeatIndex(t, hmd);
+      return hi ? parseFloat(hi) : null;
+    }
+    return null;
+  }).filter(v => v !== null);
+  const feelsMin = feelsLikeTemps.length ? Math.min(...feelsLikeTemps).toFixed(1) : null;
+  const feelsMax = feelsLikeTemps.length ? Math.max(...feelsLikeTemps).toFixed(1) : null;
+
   
   // Get tide data
   const tideSummary = Array.isArray(tideRes.data) && tideRes.data.length
@@ -231,11 +243,18 @@ async function fetchForecastEmbed() {
       { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
       { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
       {
-        name: 'Temp.',
-        value: `🔻 ${tempMin}°F (${Math.min(...tempsF).toFixed(1)}°C)\n🔺 ${tempMax}°F (${Math.max(...tempsF).toFixed(1)}°C)`,
+        name: 'Air Temp.',
+        value: `🔻 ${tempMin}°F (${tempMinC.toFixed(1)}°C)\n🔺 ${tempMax}°F (${tempMaxC.toFixed(1)}°C)`,
         inline: true
       },
-      
+      {
+        name: 'Feels Like',
+        value: feelsMin && feelsMax
+          ? `🔻 ${feelsMin}°F\n🔺 ${feelsMax}°F`
+          : 'N/A',
+        inline: true
+      },
+       
       {
         name: 'Humidity',
         value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`,

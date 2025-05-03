@@ -83,16 +83,12 @@ function getOrdinal(n) {
 }
 
 async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
-  const now = DateTime.utc();
-  const startTime = now.minus({ hours: 1 }).toISO();
-  const endTime = now.toISO();
-
-  const metarUrl = `https://aviationweather.gov/api/data/metars?station=${station}&start=${startTime}&end=${endTime}&format=json`;
+  const dateParam = DateTime.utc().toFormat('yyyyLLdd_HHmmss') + 'Z';
+  const url = `https://aviationweather.gov/api/data/metar?ids=${station}&format=json&taf=false&date=${dateParam}`;
 
   try {
-    const res = await fetch(metarUrl);
+    const res = await fetch(url);
     const json = await res.json();
-
     const metar = json?.data?.[0];
     if (!metar) return null;
 
@@ -107,6 +103,7 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
     return null;
   }
 }
+
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
@@ -139,7 +136,10 @@ async function fetchForecastEmbed() {
     return forecastDate >= forecastStart && forecastDate < forecastEnd;
   });
   const metar = await fetchLatestMetarTempAndHumidity();
-
+  if (!metar) {
+    console.warn('[⚠️] METAR data unavailable — continuing with forecast data only.');
+  }
+  
   console.log('⏱️ Forecast window times:');
 forecastWindow.forEach(h => {
   const time = DateTime.fromISO(h.time, { zone: timezone }).toFormat('ff');
@@ -284,7 +284,10 @@ const tempMax = cToF(tempMaxC);
     }
     return null;
   }).filter(v => v !== null);
-  
+
+const feelsMin = feelsLikeTemps.length ? Math.min(...feelsLikeTemps).toFixed(1) : null;
+const feelsMax = feelsLikeTemps.length ? Math.max(...feelsLikeTemps).toFixed(1) : null;
+
   if (metar && typeof metar.tempC === 'number' && typeof metar.humidity === 'number') {
     const hi = computeHeatIndex(metar.tempC, metar.humidity);
     if (hi && !isNaN(hi)) feelsLikeTemps.push(parseFloat(hi));

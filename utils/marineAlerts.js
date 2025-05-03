@@ -96,9 +96,9 @@ module.exports = {
   scheduleMarineAdvisoryCheck(client) {
     const intervalMs = CHECK_INTERVAL_MINUTES * 60 * 1000;
     setInterval(() => checkMarineAdvisory(client), intervalMs);
-    console.log(`[🔁] Marine advisory check scheduled every ${CHECK_INTERVAL_MINUTES} minutes`);
   }
 };
+
 // TEST RUN (comment out after)
 /*if (require.main === module) {
     const { Client, GatewayIntentBits } = require('discord.js');

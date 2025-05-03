@@ -104,13 +104,43 @@ async function fetchForecastEmbed() {
     throw new Error('No forecast data received from StormGlass');
   }
 
+  const forecastStart = localNow;
+  const forecastEnd = isAfter5PM
+    ? localNow.plus({ days: 1 }).set({ hour: 7, minute: 0, second: 0 })
+    : localNow.set({ hour: nextScheduled, minute: 0, second: 0 });
+  
   const forecastWindow = forecastRes.hours.filter(h => {
     const forecastDate = DateTime.fromISO(h.time, { zone: timezone });
-    const hour = forecastDate.hour;
-    if (!spanOverMidnight) return hour >= startHour && hour < endHour;
-    return hour >= startHour || hour < endHour;
+    return forecastDate >= forecastStart && forecastDate < forecastEnd;
   });
+  
+  console.log('⏱️ Forecast window times:');
+forecastWindow.forEach(h => {
+  const time = DateTime.fromISO(h.time, { zone: timezone }).toFormat('ff');
+  const tempC = h.airTemperature?.noaa;
+  const humidity = h.humidity?.noaa;
+  let feelsLike = 'N/A';
 
+  if (typeof tempC === 'number' && typeof humidity === 'number') {
+    const tempF = (tempC * 9) / 5 + 32;
+    if (tempF >= 80 && humidity >= 40) {
+      const HI =
+        -42.379 +
+        2.04901523 * tempF +
+        10.14333127 * humidity -
+        0.22475541 * tempF * humidity -
+        0.00683783 * tempF * tempF -
+        0.05481717 * humidity * humidity +
+        0.00122874 * tempF * tempF * humidity +
+        0.00085282 * tempF * humidity * humidity -
+        0.00000199 * tempF * tempF * humidity * humidity;
+      feelsLike = `${HI.toFixed(1)}°F`;
+    }
+  }
+
+  console.log(`${time} | Temp: ${tempC ?? 'N/A'}°C | Humidity: ${humidity ?? 'N/A'}% | Feels Like: ${feelsLike}`);
+});
+  
   if (forecastWindow.length === 0) throw new Error("No forecast data for current window");
 
   const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);

@@ -100,7 +100,7 @@ const isoEnd = end.toUTC().toISO();
 
     const temps = forecast.map(h => h.airTemperature?.noaa ?? 0);
     const winds = forecast.map(h => h.windSpeed?.noaa ?? 0);
-    const waves = forecastWindow.map(h => h.waveHeight?.sg ?? 0);
+    const waves = forecast.map(h => h.waveHeight?.sg ?? 0);
     //console.log('[DEBUG] Raw wave heights:', waves);
     const clouds = forecast.map(h => h.cloudCover?.noaa ?? 0);
     const waterTemps = forecast.map(h => h.waterTemperature?.noaa ?? 0);
@@ -114,8 +114,9 @@ const isoEnd = end.toUTC().toISO();
     const skyCondition = summarizeSky(clouds);
 
     const astro = astronomyRes.data[0];
-    const sunrise = DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('h:mm a');
-    const sunset = DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('h:mm a');
+    const sunrise = astro?.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('h:mm a') : 'N/A';
+    const sunset = astro?.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('h:mm a') : 'N/A';
+
 
 
     const embed = new EmbedBuilder()
@@ -132,7 +133,7 @@ const isoEnd = end.toUTC().toISO();
         }] : []),
         {
           name: 'Sky Condition',
-          value: summarizeSky(forecastWindow.map(h => h.cloudCover?.noaa ?? 0)),
+          value: summarizeSky(forecast.map(h => h.cloudCover?.noaa ?? 0)),
           inline: true
         },
        {

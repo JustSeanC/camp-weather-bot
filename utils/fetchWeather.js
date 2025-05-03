@@ -168,28 +168,24 @@ forecastWindow.forEach(h => {
   const windDirs = forecastWindow.map(h => h.windDirection?.noaa).filter(v => typeof v === 'number');
   const windAvgDir = windDirs.length ? windDirs.reduce((a, b) => a + b, 0) / windDirs.length : 0;
   
-  // Cleaned temperature data: only include hours where all 3 sources exist and are within ±5°C
-const tempsCleaned = forecastWindow
-.map(h => {
-  const noaa = h.airTemperature?.noaa;
-  const ecmwf = h.airTemperature?.ecmwf;
-  const sg = h.airTemperature?.sg;
-  const vals = [noaa, ecmwf, sg].filter(v => typeof v === 'number');
+// Cleaned temperature data: only include hours where all 3 sources exist and are within ±5°C
+// Get best-available air temp using ECMWF + SG average
+function getBestTempC(hour) {
+  const ecmwf = hour.airTemperature?.ecmwf;
+  const sg = hour.airTemperature?.sg;
+  const valid = [ecmwf, sg].filter(v => typeof v === 'number');
+  return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
+}
 
-  if (vals.length === 3) {
-    const range = Math.max(...vals) - Math.min(...vals);
-    if (range <= 5) {
-      return vals.reduce((a, b) => a + b, 0) / 3;
-    }
-  }
-  return null;
-})
-.filter(v => typeof v === 'number');
+const tempsCleaned = forecastWindow
+  .map(getBestTempC)
+  .filter(v => typeof v === 'number');
 
 const tempMinC = tempsCleaned.length ? Math.min(...tempsCleaned) : 0;
 const tempMaxC = tempsCleaned.length ? Math.max(...tempsCleaned) : 0;
 const tempMin = cToF(tempMinC);
 const tempMax = cToF(tempMaxC);
+
 
   const windMin = winds.length ? Math.min(...winds) : 0;
   const windMax = winds.length ? Math.max(...winds) : 0;
@@ -246,7 +242,7 @@ const tempMax = cToF(tempMaxC);
     return HI.toFixed(1);
   }
   const feelsLikeTemps = forecastWindow.map(h => {
-    const t = h.airTemperature?.noaa;
+    const t = getBestTempC(h);
     const hmd = h.humidity?.noaa;
     if (typeof t === 'number' && typeof hmd === 'number') {
       const hi = computeHeatIndex(t, hmd);

@@ -155,6 +155,8 @@ async function fetchForecastEmbed() {
   const metar = await fetchLatestMetarTempAndHumidity();
   if (!metar) {
     console.warn('[⚠️] METAR data unavailable — continuing with forecast data only.');
+  } else {
+    console.log(`[METAR] Temp: ${metar.tempC}°C, RH: ${metar.humidity}%`);
   }
   
   console.log('⏱️ Forecast window times:');
@@ -293,25 +295,28 @@ const tempMax = cToF(tempMaxC);
   
     return HI.toFixed(1);
   }
-  const feelsLikeTemps = forecastWindow.map(h => {
-    const t = getBestTempC(h);
-    const hmd = h.humidity?.noaa;
-    if (typeof t === 'number' && typeof hmd === 'number') {
-      return computeHeatIndex(t, hmd);
-    }
-    return null;
-  }).filter(v => v !== null);
+  // Build heat index estimates from forecast data
+const feelsLikeTemps = forecastWindow.map(h => {
+  const t = getBestTempC(h);
+  const hmd = h.humidity?.noaa;
+  if (typeof t === 'number' && typeof hmd === 'number') {
+    const hi = computeHeatIndex(t, hmd);
+    return hi ? parseFloat(hi) : null;
+  }
+  return null;
+}).filter(v => v !== null);
 
+// Optionally include METAR-based heat index if valid
+if (metar && typeof metar.tempC === 'number' && typeof metar.humidity === 'number') {
+  const hi = computeHeatIndex(metar.tempC, metar.humidity);
+  if (hi && !isNaN(hi)) feelsLikeTemps.push(parseFloat(hi));
+}
+
+// Now calculate min/max from full list
 const feelsMin = feelsLikeTemps.length ? Math.min(...feelsLikeTemps).toFixed(1) : null;
 const feelsMax = feelsLikeTemps.length ? Math.max(...feelsLikeTemps).toFixed(1) : null;
 
-  if (metar && typeof metar.tempC === 'number' && typeof metar.humidity === 'number') {
-    const hi = computeHeatIndex(metar.tempC, metar.humidity);
-    if (hi && !isNaN(hi)) feelsLikeTemps.push(parseFloat(hi));
-  }
-  
 
-  
   // Get tide data
   const tideSummary = Array.isArray(tideRes.data) && tideRes.data.length
   ? tideRes.data.slice(0, 4).map(t => {

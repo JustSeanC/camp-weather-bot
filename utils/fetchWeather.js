@@ -78,12 +78,12 @@ function getNextForecastTime() {
     minute: '2-digit'
   });
 
-  const utcTime = new Date(localNow.toLocaleString('en-US', { timeZone: 'UTC' }))
-    .toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
-    });
+  const utcTime = localNow.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC'
+  });
+  
 
   const dateFormatted = localNow.toLocaleDateString('en-US', {
     timeZone: timezone,

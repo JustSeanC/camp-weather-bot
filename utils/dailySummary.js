@@ -6,7 +6,7 @@ const { DateTime } = require('luxon');
 const path = require('path');
 
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
-
+const fetchWithFallback = require('./utils/fetchWithFallback');
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -62,23 +62,6 @@ function getAlertStatus() {
     return '❓ Unable to determine alert status';
   }
 }
-
-async function fetchWithFallback(url) {
-  const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
-  const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
-
-  const resPrimary = await fetch(url, { headers: headersPrimary });
-  const dataPrimary = await resPrimary.json();
-
-  if (resPrimary.status === 429 || dataPrimary?.errors?.key === 'API quota exceeded') {
-    console.warn('[⚠️] Primary API token rate-limited or quota exceeded — using secondary token.');
-    const resSecondary = await fetch(url, { headers: headersSecondary });
-    return resSecondary.json();
-  }
-
-  return dataPrimary;
-}
-
 
 async function postDailySummary(client) {
   try {

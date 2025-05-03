@@ -78,6 +78,13 @@ function getGreetingEmoji(hour) {
   if (hour < 17) return '🌞 Good Afternoon';
   return '🌇 Good Evening';
 }
+function getOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
+// → May 2nd, 2025
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
@@ -111,8 +118,8 @@ async function fetchForecastEmbed() {
 
   const tempsF = forecastWindow.map(h => cToF(h.airTemperature?.noaa ?? 0));
   const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);
-  const waveHeights = forecastWindow.map(h => h.waveHeight?.noaa ?? 0);
-  console.log('[DEBUG] Full waveHeight objects:', forecastWindow.map(h => h.waveHeight));
+  const waveHeights = forecastWindow.map(h => h.waveHeight?.sg ?? 0);
+  //console.log('[DEBUG] Full waveHeight objects:', forecastWindow.map(h => h.waveHeight));
   const weatherTypes = forecastWindow.map(h => {
     const c = h.cloudCover?.noaa ?? 0;
     if (c < 10) return 'Clear';
@@ -148,7 +155,7 @@ async function fetchForecastEmbed() {
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const greeting = getGreetingEmoji(localHour);
-  const dateString = localNow.toFormat('MMM dd');
+  const dateString = localNow.toFormat("MMMM d',' yyyy"); // → May 2, 2025
   const localTime = localNow.toFormat('hh:mm a');
   const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 

@@ -207,14 +207,29 @@ async function fetchForecastEmbed() {
       },
       {
         name: 'Wind',
-        value: `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)\n🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)\n➡️ ${degreesToCompass(windAvgDir)} avg`,
+        value:
+          windMax < 1
+            ? '🪁 Calm'
+            : [
+                windMin > 0 ? `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)` : null,
+                `🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)`,
+                `➡️ ${degreesToCompass(windAvgDir)} avg`
+              ].filter(Boolean).join('\n'),
         inline: true
       },
-      {
+      
+      ...(waveMax > 0 ? [{
         name: 'Wave Height',
-        value: `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)\n🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`,
+        value:
+          waveMax < 0.3
+            ? '🌊 Calm'
+            : [
+                waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)` : null,
+                `🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`
+              ].filter(Boolean).join('\n'),
         inline: true
-      },
+      }] : []),
+      
       {
         name: 'Water Temp.',
         value: `🔻 ${cToF(waterTempMin)}°F (${waterTempMin.toFixed(1)}°C)\n🔺 ${cToF(waterTempMax)}°F (${waterTempMax.toFixed(1)}°C)`,

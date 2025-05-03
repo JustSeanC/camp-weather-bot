@@ -4,7 +4,8 @@ const { EmbedBuilder } = require('discord.js');
 const { DateTime } = require('luxon');
 const fetchWithFallback = require('./fetchWithFallback');
 const { getCachedAstronomyData } = require('./cacheAstronomy');
-
+const DEBUG_WEBHOOK_URL = 'https://discord.com/api/webhooks/1368332136297267301/-Ta8_ueZEwCv1OQ3qpT-xNKNpLUdGDkikQ4w0PYc6tLLgwnld8kJ6yRru1NDXH22dWlA';
+// debug logging for stuff
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -54,6 +55,30 @@ function getNextForecastTime() {
 
   return `**${localTime} EDT / ${utcTime} UTC** on ${dateFormatted}`;
 }
+// debug code posting to discord
+async function postDebugToDiscord(title, jsonData) {
+  if (!DEBUG_WEBHOOK_URL) return;
+
+  const jsonString = JSON.stringify(jsonData, null, 2);
+  const chunks = [];
+
+  for (let i = 0; i < jsonString.length; i += 1900) {
+    chunks.push(jsonString.slice(i, i + 1900));
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const content = `\`\`\`json\n${chunks[i]}\n\`\`\``;
+    await fetch(DEBUG_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Weather Debug',
+        content: `**${title}${chunks.length > 1 ? ` (Part ${i + 1}/${chunks.length})` : ''}**\n${content}`
+      })
+    });
+  }
+}
+
 
 function getCurrentForecastWindowLabel(hour) {
   const now = DateTime.now().setZone(timezone);
@@ -105,18 +130,7 @@ async function fetchForecastEmbed() {
     console.error('[❌] forecastRes.hours is missing or malformed:', forecastRes);
     throw new Error('No forecast data received from StormGlass');
   }
-  // ✅ DEBUG
-  console.debug('[🌊 DEBUG] Full raw waterTemperature data from all sources:');
-console.debug(JSON.stringify(
-  forecastRes.hours.map(h => ({
-    time: h.time,
-    sources: h.waterTemperature
-  })),
-  null,
-  2
-));
 
-  
   const forecastWindow = forecastRes.hours.filter(h => {
     const forecastDate = DateTime.fromISO(h.time, { zone: timezone });
     const hour = forecastDate.hour;
@@ -141,7 +155,10 @@ console.debug(JSON.stringify(
   const humidityMin = humidities.length ? Math.min(...humidities) : 0;
   const humidityMax = humidities.length ? Math.max(...humidities) : 0;
   
-  const waterTemps = forecastWindow.map(h => h.waterTemperature?.noaa).filter(v => typeof v === 'number');
+  const waterTemps = forecastWindow.map(h => {
+  const vals = [h.waterTemperature?.meto, h.waterTemperature?.sg].filter(v => typeof v === 'number');
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }).filter(v => typeof v === 'number');
   const waterTempMin = waterTemps.length ? Math.min(...waterTemps) : 0;
   const waterTempMax = waterTemps.length ? Math.max(...waterTemps) : 0;
   
@@ -151,7 +168,15 @@ console.debug(JSON.stringify(
   const tempsF = forecastWindow.map(h => h.airTemperature?.noaa).filter(v => typeof v === 'number');
   const tempMin = tempsF.length ? cToF(Math.min(...tempsF)) : '0';
   const tempMax = tempsF.length ? cToF(Math.max(...tempsF)) : '0';
-
+  // air temp debug - helps with averages
+  await postDebugToDiscord(
+    '🌡️ DEBUG: Full raw airTemperature data from all sources',
+    forecastWindow.map(h => ({
+      time: h.time,
+      sources: h.airTemperature
+    }))
+  );
+  
   
   const windMin = winds.length ? Math.min(...winds) : 0;
   const windMax = winds.length ? Math.max(...winds) : 0;

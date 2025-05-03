@@ -81,7 +81,7 @@ function getOrdinal(n) {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-
+//METAR fallback fetch
 const xml2js = require('xml2js');
 
 async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
@@ -90,12 +90,17 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
   try {
     const res = await fetch(url);
     const xml = await res.text();
-
     const parsed = await xml2js.parseStringPromise(xml);
-    const metars = parsed.response.data[0].METAR;
 
-    if (!metars || metars.length === 0) {
-      console.warn(`[⚠️] No METAR data found for ${station}`);
+    // Optional: log structure for debugging
+    if (!parsed?.response?.data?.[0]?.METAR) {
+      console.warn('[⚠️] Unexpected METAR structure:', JSON.stringify(parsed, null, 2));
+      return null;
+    }
+
+    const metars = parsed.response.data[0].METAR;
+    if (!metars.length) {
+      console.warn(`[⚠️] No METAR records found for ${station}`);
       return null;
     }
 
@@ -105,7 +110,7 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
 
     if (isNaN(tempC) || isNaN(dewpointC)) return null;
 
-    // Calculate relative humidity from temp/dewpoint
+    // Compute relative humidity from temp & dewpoint
     const rh = 100 * (Math.exp((17.625 * dewpointC) / (243.04 + dewpointC)) / Math.exp((17.625 * tempC) / (243.04 + tempC)));
 
     return {
@@ -117,8 +122,6 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
     return null;
   }
 }
-
-
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
     fetchWithFallback(forecastEndpoint),

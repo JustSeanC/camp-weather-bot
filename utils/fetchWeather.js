@@ -105,7 +105,18 @@ async function fetchForecastEmbed() {
     console.error('[❌] forecastRes.hours is missing or malformed:', forecastRes);
     throw new Error('No forecast data received from StormGlass');
   }
+  // ✅ DEBUG
+  console.debug('[🌊 DEBUG] Full raw waterTemperature data from all sources:');
+console.debug(JSON.stringify(
+  forecastRes.hours.map(h => ({
+    time: h.time,
+    sources: h.waterTemperature
+  })),
+  null,
+  2
+));
 
+  
   const forecastWindow = forecastRes.hours.filter(h => {
     const forecastDate = DateTime.fromISO(h.time, { zone: timezone });
     const hour = forecastDate.hour;

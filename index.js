@@ -69,7 +69,7 @@ console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');
 
 // Daily countdown at 8 AM
-cron.schedule('0 8 * * *', async () => {
+cron.schedule('0 9 * * *', async () => {
   const msg = getCountdownMessage();
   if (msg) {
     const channel = await client.channels.fetch('1331718479446933604');

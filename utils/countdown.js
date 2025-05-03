@@ -6,7 +6,7 @@ const target = DateTime.fromObject({
   year: 2025,
   month: 6,
   day: 18,
-  hour: 12,
+  hour: 9,
   minute: 0,
 }, { zone: 'America/New_York' });
 

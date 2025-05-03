@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
-
+const fetchWithFallback = require('./fetchWithFallback');
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -20,15 +20,7 @@ const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
 const { getCachedAstronomyData } = require('./cacheAstronomy');
-// Fallback logic
-async function fetchWithFallback(url) {
-  const headersPrimary = { Authorization: process.env.STORMGLASS_API_KEY_PRIMARY };
-  const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
-  const resPrimary = await fetch(url, { headers: headersPrimary });
-  if (resPrimary.status !== 429) return resPrimary;
-  console.warn(`[⚠️] Rate limit hit on primary token for ${url}. Trying secondary...`);
-  return await fetch(url, { headers: headersSecondary });
-}
+
 
 function degreesToCompass(deg) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];

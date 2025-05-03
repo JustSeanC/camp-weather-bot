@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { fetchWithFallback } = require('./fetchWeather'); // assumes fetchWithFallback is exported
+const fetchWithFallback = require('./fetchWithFallback');
 
 const astronomyCachePath = path.join(__dirname, '../data/astronomyCache.json');
 

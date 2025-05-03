@@ -37,7 +37,7 @@ function cToF(c) {
 
 function getNextForecastTime() {
   const localNow = DateTime.now().setZone(timezone);
-  console.log(`[DEBUG] Luxon local time: ${localNow.toISO()}`);
+  //console.log(`[DEBUG] Luxon local time: ${localNow.toISO()}`);
 
   let nextHour;
   if (localNow.hour < 7) nextHour = 7;

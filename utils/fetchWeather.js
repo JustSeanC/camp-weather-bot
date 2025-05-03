@@ -52,25 +52,26 @@ function formatHour12(hour) {
 
 function getNextForecastTime() {
   const now = new Date();
+  console.log(`[DEBUG] Server time now: ${now.toISOString()}`);
 
-  // Get the local time in target timezone
   const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  console.log(`[DEBUG] Local time (${timezone}): ${localNow.toISOString()}`);
+
   const localHour = localNow.getHours();
+  console.log(`[DEBUG] Local hour: ${localHour}`);
 
   let nextHour;
   if (localHour < 7) nextHour = 7;
   else if (localHour < 12) nextHour = 12;
   else if (localHour < 17) nextHour = 17;
   else {
-    // After 5 PM, go to 7 AM next day
     localNow.setDate(localNow.getDate() + 1);
     nextHour = 7;
   }
 
-  // Set to exact next scheduled local time
   localNow.setHours(nextHour, 0, 0, 0);
+  console.log(`[DEBUG] Adjusted local forecast time: ${localNow.toISOString()}`);
 
-  // Format times properly
   const localTime = localNow.toLocaleTimeString('en-US', {
     timeZone: timezone,
     hour: '2-digit',
@@ -90,8 +91,13 @@ function getNextForecastTime() {
     day: 'numeric'
   });
 
+  console.log(`[DEBUG] Final localTime: ${localTime}`);
+  console.log(`[DEBUG] Final utcTime: ${utcTime}`);
+  console.log(`[DEBUG] Final date: ${dateFormatted}`);
+
   return `**${localTime} EDT / ${utcTime} UTC** on ${dateFormatted}`;
 }
+
 
 
 

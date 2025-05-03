@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
-
+const { DateTime } = require('luxon');
+const { EmbedBuilder } = require('discord.js');
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { postDailySummary } = require('./utils/dailySummary');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
@@ -67,35 +68,42 @@ console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 //Countdown to Camp
 const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');
 
-async function postAndPin(channelId, messageContent) {
-  const channel = await client.channels.fetch(channelId);
-  if (!channel || !messageContent) return;
-
-  // Unpin the previous countdown message if one exists
-  const pins = await channel.messages.fetchPinned();
-  const previousCountdownPin = pins.find(msg => msg.author.id === client.user.id && msg.content.includes('Countdown to Campers'));
-
-  if (previousCountdownPin) {
-    await previousCountdownPin.unpin();
-  }
-
-  // Send and pin the new message
-  const message = await channel.send(messageContent);
-  await message.react('🎉');
-  await message.pin();
-}
-
 // Daily countdown at 8 AM
 cron.schedule('0 8 * * *', async () => {
   const msg = getCountdownMessage();
-  if (msg) await postAndPin('1331717718323368068', msg);
+  if (msg) {
+    const channel = await client.channels.fetch('1331718479446933604');
+    const sent = await channel.send({ embeds: [msg] });
+    await sent.react('🎉');
+  }
+}, { timezone: 'America/New_York' });
+
+// 12-hour countdown post at midnight on June 18
+cron.schedule('0 0 18 6 *', async () => {
+  const now = DateTime.now().setZone('America/New_York');
+  const embed = new EmbedBuilder()
+    .setTitle('⏰ Final Countdown!')
+    .setDescription(`Today is **${now.toFormat('MMMM d, yyyy')}**\n\nOnly **12 hours** until campers arrive!`)
+    .setColor(0xffcc00)
+    .setTimestamp();
+
+  const channel = await client.channels.fetch('1331718479446933604');
+  const sent = await channel.send({ embeds: [embed] });
+  await sent.react('⏳');
 }, { timezone: 'America/New_York' });
 
 // Final welcome message at 12 PM on June 18
 cron.schedule('0 12 18 6 *', async () => {
   const msg = getFinalMessage();
-  if (msg) await postAndPin('1331717718323368068', msg);
+  if (msg) {
+    const channel = await client.channels.fetch('1331718479446933604');
+    const sent = await channel.send(msg);
+    await sent.react('🎉');
+  }
 }, { timezone: 'America/New_York' });
+
+
+
 
 
 

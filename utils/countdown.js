@@ -1,5 +1,6 @@
 // utils/countdown.js
 const { DateTime } = require('luxon');
+const { EmbedBuilder } = require('discord.js');
 
 const target = DateTime.fromObject({
   year: 2025,
@@ -11,20 +12,20 @@ const target = DateTime.fromObject({
 
 function getCountdownMessage() {
   const now = DateTime.now().setZone('America/New_York');
-
   if (now >= target) return null;
 
-  const diff = target.diff(now, ['days', 'hours', 'minutes']).toObject();
+  const diff = target.diff(now, ['days']).toObject();
   const days = Math.floor(diff.days);
-  const hours = Math.floor(diff.hours);
-  const minutes = Math.floor(diff.minutes);
 
-  return `🎉 **Countdown to Campers:** ${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''} remaining!`;
+  return new EmbedBuilder()
+    .setTitle('📆 Countdown To Campers')
+    .setDescription(`Today is **${now.toFormat('MMMM d, yyyy')}**\n\nThere are **${days} day${days !== 1 ? 's' : ''}** until the campers arrive!`)
+    .setColor(0x00bfff)
+    .setTimestamp();
 }
 
 function getFinalMessage() {
-    return `@everyone 🎉 **WELCOME CAMPERS! GOOD LUCK STAFF!** 🎉`;
-  }
-  
+  return `@everyone 🎉 **WELCOME CAMPERS! GOOD LUCK STAFF!** 🎉`;
+}
 
 module.exports = { getCountdownMessage, getFinalMessage };

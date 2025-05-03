@@ -115,7 +115,6 @@ async function fetchForecastEmbed() {
 
   if (forecastWindow.length === 0) throw new Error("No forecast data for current window");
 
-  const tempsF = forecastWindow.map(h => cToF(h.airTemperature?.noaa ?? 0));
   const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);
   const waveHeights = forecastWindow.map(h => h.waveHeight?.sg ?? 0);
   //console.log('[DEBUG] Full waveHeight objects:', forecastWindow.map(h => h.waveHeight));
@@ -127,40 +126,67 @@ async function fetchForecastEmbed() {
     if (c < 90) return 'Cloudy';
     return 'Overcast';
   });
-  const humidities = forecastWindow.map(h => h.humidity?.noaa ?? 0);
-  const humidityMin = Math.min(...humidities);
-  const humidityMax = Math.max(...humidities);
+  const humidities = forecastWindow.map(h => h.humidity?.noaa).filter(v => typeof v === 'number');
+  const humidityMin = humidities.length ? Math.min(...humidities) : 0;
+  const humidityMax = humidities.length ? Math.max(...humidities) : 0;
+  
+  const waterTemps = forecastWindow.map(h => h.waterTemperature?.noaa).filter(v => typeof v === 'number');
+  const waterTempMin = waterTemps.length ? Math.min(...waterTemps) : 0;
+  const waterTempMax = waterTemps.length ? Math.max(...waterTemps) : 0;
+  
+  const windDirs = forecastWindow.map(h => h.windDirection?.noaa).filter(v => typeof v === 'number');
+  const windAvgDir = windDirs.length ? windDirs.reduce((a, b) => a + b, 0) / windDirs.length : 0;
+  
+  const tempsF = forecastWindow.map(h => h.airTemperature?.noaa).filter(v => typeof v === 'number');
+  const tempMin = tempsF.length ? cToF(Math.min(...tempsF)) : '0';
+  const tempMax = tempsF.length ? cToF(Math.max(...tempsF)) : '0';
 
-  const waterTemps = forecastWindow.map(h => h.waterTemperature?.noaa ?? 0);
-  const waterTempMin = Math.min(...waterTemps);
-  const waterTempMax = Math.max(...waterTemps);
-  const windDirs = forecastWindow.map(h => h.windDirection?.noaa ?? 0);
-  const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
-  const tempMin = Math.min(...tempsF);
-  const tempMax = Math.max(...tempsF);
-  const windMin = Math.min(...winds);
-  const windMax = Math.max(...winds);
-  const waveMin = Math.min(...waveHeights);
-  const waveMax = Math.max(...waveHeights);
-
-  const waveAlert = waveMax >= 1.22;
-  const windAlert = windMax >= 8.05;
+  
+  const windMin = winds.length ? Math.min(...winds) : 0;
+  const windMax = winds.length ? Math.max(...winds) : 0;
+  
+  const waveMin = waveHeights.length ? Math.min(...waveHeights) : 0;
+  const waveMax = waveHeights.length ? Math.max(...waveHeights) : 0;
+  
+  const waveAlert = waveMax >= 1.22; // 4 ft
+  const windAlert = windMax >= 8.05; // 18 mph
   const showAdvisory = waveAlert || windAlert;
-
-  const astro = astronomyRes.data[0];
-  const sunrise = DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a');
-  const sunset = DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a');
+  
+  const astro = astronomyRes.data?.[0] || {};
+  const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a') : 'N/A';
+  const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a') : 'N/A';
   const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
   const moonEmoji = getMoonEmoji(moonPhase);
-
+  
   const greeting = getGreetingEmoji(localHour);
   const localTime = localNow.toFormat('hh:mm a');
   const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
-
-  const tideSummary = tideRes.data.slice(0, 4).map(t => {
-    const time = DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a');
-    return `${t.type} at ${time}`;
-  }).join('\n');
+  
+  //Get average sky condition
+  function getAverageSkyCondition(forecastWindow) {
+    const cloudPercents = forecastWindow
+      .map(h => h.cloudCover?.noaa)
+      .filter(v => typeof v === 'number');
+  
+    if (cloudPercents.length === 0) return 'Unknown';
+  
+    const avgCloud = cloudPercents.reduce((a, b) => a + b, 0) / cloudPercents.length;
+  
+    if (avgCloud < 10) return 'Clear';
+    if (avgCloud < 40) return 'Mostly Sunny';
+    if (avgCloud < 70) return 'Partly Cloudy';
+    if (avgCloud < 90) return 'Cloudy';
+    return 'Overcast';
+  }
+  
+  
+  // Get tide data
+  const tideSummary = Array.isArray(tideRes.data) && tideRes.data.length
+  ? tideRes.data.slice(0, 4).map(t => {
+      const time = DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a');
+      return `${t.type} at ${time}`;
+    }).join('\n')
+  : 'No data';
 
   const embed = new EmbedBuilder()
     .setTitle(`🌤️ Camp Tockwogh Forecast`)
@@ -196,9 +222,9 @@ async function fetchForecastEmbed() {
       },
       {
         name: 'Sky Conditions',
-        value: [...new Set(weatherTypes)].join(', '),
+        value: getAverageSkyCondition(forecastWindow),
         inline: true
-      },
+      },      
       {
         name: 'Tides',
         value: tideSummary || 'No data',
@@ -231,5 +257,4 @@ async function fetchForecastEmbed() {
 
   return embed;
 }
-
 module.exports = { fetchForecastEmbed };

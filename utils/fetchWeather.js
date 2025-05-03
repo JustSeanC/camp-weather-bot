@@ -167,6 +167,10 @@ if (nextScheduled === 31) {
   spanOverMidnight = true;
 }
 
+if (!forecastRes.hours || !Array.isArray(forecastRes.hours)) {
+  console.error('[❌] forecastRes.hours is missing or malformed:', forecastRes);
+  throw new Error('No forecast data received from StormGlass');
+}
 
   const forecastWindow = forecastRes.hours.filter(h => {
   const date = new Date(h.time);

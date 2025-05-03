@@ -94,9 +94,10 @@ const isoEnd = end.toUTC().toISO();
     const astronomyURL = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}&start=${isoStart}`;
 
     const [forecastRes, astronomyRes] = await Promise.all([
-      fetchWithFallback(forecastURL).then(r => r.json()),
-      fetchWithFallback(astronomyURL).then(r => r.json())
+      fetchWithFallback(forecastURL),
+      fetchWithFallback(astronomyURL)
     ]);
+    
     console.log('[DEBUG] forecastRes:', JSON.stringify(forecastRes, null, 2));
     const forecast = forecastRes.hours.filter(h => {
       const time = DateTime.fromISO(h.time);

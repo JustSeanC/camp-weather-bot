@@ -64,6 +64,41 @@ console.log('⏰ Scheduled severe weather checks every 10 minutes.');
   });
 });
 
+//Countdown to Camp
+const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');
+
+async function postAndPin(channelId, messageContent) {
+  const channel = await client.channels.fetch(channelId);
+  if (!channel || !messageContent) return;
+
+  // Unpin the previous countdown message if one exists
+  const pins = await channel.messages.fetchPinned();
+  const previousCountdownPin = pins.find(msg => msg.author.id === client.user.id && msg.content.includes('Countdown to Campers'));
+
+  if (previousCountdownPin) {
+    await previousCountdownPin.unpin();
+  }
+
+  // Send and pin the new message
+  const message = await channel.send(messageContent);
+  await message.react('🎉');
+  await message.pin();
+}
+
+// Daily countdown at 8 AM
+cron.schedule('0 8 * * *', async () => {
+  const msg = getCountdownMessage();
+  if (msg) await postAndPin('1331717718323368068', msg);
+}, { timezone: 'America/New_York' });
+
+// Final welcome message at 12 PM on June 18
+cron.schedule('0 12 18 6 *', async () => {
+  const msg = getFinalMessage();
+  if (msg) await postAndPin('1331717718323368068', msg);
+}, { timezone: 'America/New_York' });
+
+
+
 // Slash command interaction handler
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;

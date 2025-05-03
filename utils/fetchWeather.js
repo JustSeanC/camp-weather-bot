@@ -195,10 +195,11 @@ async function fetchForecastEmbed() {
       { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
       { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
       {
-        name: 'Temperature',
-        value: `🔻 ${tempMin}°F\n🔺 ${tempMax}°F`,
+        name: 'Temp.',
+        value: `🔻 ${tempMin}°F (${Math.min(...tempsF).toFixed(1)}°C)\n🔺 ${tempMax}°F (${Math.max(...tempsF).toFixed(1)}°C)`,
         inline: true
       },
+      
       {
         name: 'Humidity',
         value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`,
@@ -206,22 +207,21 @@ async function fetchForecastEmbed() {
       },
       {
         name: 'Wind',
-        value: `🔻 ${mpsToMph(windMin)} mph\n🔺 ${mpsToMph(windMax)} mph\n➡️ ${degreesToCompass(windAvgDir)} avg`,
+        value: `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)\n🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)\n➡️ ${degreesToCompass(windAvgDir)} avg`,
         inline: true
       },
-      ...(waveMax > 0 ? [{
+      {
         name: 'Wave Height',
-        value: `🔻 ${metersToFeet(waveMin)} ft\n🔺 ${metersToFeet(waveMax)} ft`,
-        inline: true
-      }] : []),
-      
-      {
-        name: 'Water Temp',
-        value: `🔻 ${cToF(waterTempMin)}°F\n🔺 ${cToF(waterTempMax)}°F`,
+        value: `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)\n🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`,
         inline: true
       },
       {
-        name: 'Sky Conditions',
+        name: 'Water Temp.',
+        value: `🔻 ${cToF(waterTempMin)}°F (${waterTempMin.toFixed(1)}°C)\n🔺 ${cToF(waterTempMax)}°F (${waterTempMax.toFixed(1)}°C)`,
+        inline: true
+      },
+      {
+        name: 'Sky Cond.',
         value: getAverageSkyCondition(forecastWindow),
         inline: true
       },      

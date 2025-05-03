@@ -81,8 +81,8 @@ function getGreetingEmoji(hour) {
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
-    fetchWithFallback(forecastEndpoint).then(r => r.json()),
-    fetchWithFallback(tideEndpoint).then(r => r.json())
+    fetchWithFallback(forecastEndpoint),
+    fetchWithFallback(tideEndpoint)
   ]);
   const astronomyRes = await getCachedAstronomyData(astronomyEndpoint);
 

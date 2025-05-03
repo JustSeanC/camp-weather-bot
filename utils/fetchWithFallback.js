@@ -1,11 +1,9 @@
 const fetch = require('node-fetch');
 
 async function fetchWithFallback(url) {
-  const keys = [
-    process.env.STORMGLASS_API_KEY_PRIMARY,
-    process.env.STORMGLASS_API_KEY_SECONDARY,
-    process.env.STORMGLASS_API_KEY_TERTIARY
-  ];
+  const keys = Object.keys(process.env)
+    .filter(k => k.startsWith('STORMGLASS_API_KEY'))
+    .map(k => process.env[k]);
 
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];

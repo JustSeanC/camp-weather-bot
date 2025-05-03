@@ -1,26 +1,22 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
+const { DateTime } = require('luxon');
 const fetchWithFallback = require('./fetchWithFallback');
+const { getCachedAstronomyData } = require('./cacheAstronomy');
+
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
 const weatherParams = [
-  'airTemperature',
-  'windSpeed',
-  'windDirection',
-  'cloudCover',
-  'waveHeight',
-  'waterTemperature',
-  'humidity'
+  'airTemperature', 'windSpeed', 'windDirection',
+  'cloudCover', 'waveHeight', 'waterTemperature', 'humidity'
 ];
 
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
-const { getCachedAstronomyData } = require('./cacheAstronomy');
-
 
 function degreesToCompass(deg) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -39,88 +35,33 @@ function cToF(c) {
   return ((c * 9) / 5 + 32).toFixed(1);
 }
 
-function formatHour12(hour) {
-  const date = new Date();
-  date.setHours(hour, 0, 0);
-  return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: timezone
-  });
-}
-
 function getNextForecastTime() {
-  const now = new Date();
-  console.log(`[DEBUG] Server time now: ${now.toISOString()}`);
-
-  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-  console.log(`[DEBUG] Local time (${timezone}): ${localNow.toISOString()}`);
-
-  const localHour = localNow.getHours();
-  console.log(`[DEBUG] Local hour: ${localHour}`);
+  const localNow = DateTime.now().setZone(timezone);
+  console.log(`[DEBUG] Luxon local time: ${localNow.toISO()}`);
 
   let nextHour;
-  if (localHour < 7) nextHour = 7;
-  else if (localHour < 12) nextHour = 12;
-  else if (localHour < 17) nextHour = 17;
-  else {
-    localNow.setDate(localNow.getDate() + 1);
-    nextHour = 7;
-  }
+  if (localNow.hour < 7) nextHour = 7;
+  else if (localNow.hour < 12) nextHour = 12;
+  else if (localNow.hour < 17) nextHour = 17;
+  else nextHour = 7;
 
-  localNow.setHours(nextHour, 0, 0, 0);
-  console.log(`[DEBUG] Adjusted local forecast time: ${localNow.toISOString()}`);
+  let forecastTime = localNow.set({ hour: nextHour, minute: 0, second: 0, millisecond: 0 });
+  if (localNow.hour >= 17) forecastTime = forecastTime.plus({ days: 1 });
 
-  const localTime = localNow.toLocaleTimeString('en-US', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
-  const utcTime = localNow.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC'
-  });
-  
-
-  const dateFormatted = localNow.toLocaleDateString('en-US', {
-    timeZone: timezone,
-    month: 'short',
-    day: 'numeric'
-  });
-
-  console.log(`[DEBUG] Final localTime: ${localTime}`);
-  console.log(`[DEBUG] Final utcTime: ${utcTime}`);
-  console.log(`[DEBUG] Final date: ${dateFormatted}`);
+  const localTime = forecastTime.toFormat('hh:mm a');
+  const utcTime = forecastTime.setZone('UTC').toFormat('HH:mm');
+  const dateFormatted = forecastTime.toFormat('MMM d');
 
   return `**${localTime} EDT / ${utcTime} UTC** on ${dateFormatted}`;
 }
 
-
-
-
 function getCurrentForecastWindowLabel(hour) {
-  function formatHour12(h) {
-    const d = new Date();
-    d.setHours(h, 0, 0);
-    return d.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: timezone
-    });
-  }
-
-  let next;
-  if (hour < 7) next = 7;
-  else if (hour < 12) next = 12;
-  else if (hour < 17) next = 17;
-  else next = 7;
-
-  const endLabel = (hour >= 17) ? '7:00 AM (next day)' : formatHour12(next);
-  return `${formatHour12(hour)} → ${endLabel} EDT`;
+  const now = DateTime.now().setZone(timezone);
+  let next = hour < 7 ? 7 : hour < 12 ? 12 : hour < 17 ? 17 : 7;
+  const endLabel = (hour >= 17)
+    ? '7:00 AM (next day)'
+    : now.set({ hour: next }).toFormat('hh:mm a');
+  return `${now.set({ hour }).toFormat('hh:mm a')} → ${endLabel} EDT`;
 }
 
 function getMoonEmoji(phase) {
@@ -140,46 +81,31 @@ function getGreetingEmoji(hour) {
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
-  fetchWithFallback(forecastEndpoint).then(r => r.json()),
-  fetchWithFallback(tideEndpoint).then(r => r.json()),
-]);
+    fetchWithFallback(forecastEndpoint).then(r => r.json()),
+    fetchWithFallback(tideEndpoint).then(r => r.json())
+  ]);
+  const astronomyRes = await getCachedAstronomyData(astronomyEndpoint);
 
-const astronomyRes = await getCachedAstronomyData(astronomyEndpoint);
+  const localNow = DateTime.now().setZone(timezone);
+  const localHour = localNow.hour;
+  const isAfter5PM = localHour >= 17;
 
-  const now = new Date();
-  const localHour = parseInt(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: timezone }));
-  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const nextScheduled = localHour < 7 ? 7 : localHour < 12 ? 12 : localHour < 17 ? 17 : 7;
+  const spanOverMidnight = isAfter5PM;
+  const endHour = nextScheduled;
+  const startHour = localHour;
 
- function getNextScheduledHour(hour) {
-  if (hour < 7) return 7;
-  if (hour < 12) return 12;
-  if (hour < 17) return 17;
-  return 31; // special value to signal 7AM next day
-}
-
-const startHour = localHour;
-const nextScheduled = getNextScheduledHour(localHour);
-
-let endHour = nextScheduled;
-let spanOverMidnight = false;
-if (nextScheduled === 31) {
-  endHour = 7;
-  spanOverMidnight = true;
-}
-
-if (!forecastRes.hours || !Array.isArray(forecastRes.hours)) {
-  console.error('[❌] forecastRes.hours is missing or malformed:', forecastRes);
-  throw new Error('No forecast data received from StormGlass');
-}
+  if (!forecastRes.hours || !Array.isArray(forecastRes.hours)) {
+    console.error('[❌] forecastRes.hours is missing or malformed:', forecastRes);
+    throw new Error('No forecast data received from StormGlass');
+  }
 
   const forecastWindow = forecastRes.hours.filter(h => {
-  const date = new Date(h.time);
-  const hour = date.getHours();
-  const isToday = new Date(date.toLocaleString('en-US', { timeZone: timezone })).getDate() === localNow.getDate();
-  if (!spanOverMidnight) return hour >= startHour && hour < endHour;
-  return hour >= startHour || (hour < endHour && !isToday);
-});
-
+    const forecastDate = DateTime.fromISO(h.time, { zone: timezone });
+    const hour = forecastDate.hour;
+    if (!spanOverMidnight) return hour >= startHour && hour < endHour;
+    return hour >= startHour || hour < endHour;
+  });
 
   if (forecastWindow.length === 0) throw new Error("No forecast data for current window");
 
@@ -194,13 +120,13 @@ if (!forecastRes.hours || !Array.isArray(forecastRes.hours)) {
     if (c < 90) return 'Cloudy';
     return 'Overcast';
   });
-const humidities = forecastWindow.map(h => h.humidity?.noaa ?? 0);
-const humidityMin = Math.min(...humidities);
-const humidityMax = Math.max(...humidities);
+  const humidities = forecastWindow.map(h => h.humidity?.noaa ?? 0);
+  const humidityMin = Math.min(...humidities);
+  const humidityMax = Math.max(...humidities);
 
   const waterTemps = forecastWindow.map(h => h.waterTemperature?.noaa ?? 0);
-const waterTempMin = Math.min(...waterTemps);
-const waterTempMax = Math.max(...waterTemps);
+  const waterTempMin = Math.min(...waterTemps);
+  const waterTempMax = Math.max(...waterTemps);
   const windDirs = forecastWindow.map(h => h.windDirection?.noaa ?? 0);
   const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
   const tempMin = Math.min(...tempsF);
@@ -215,20 +141,18 @@ const waterTempMax = Math.max(...waterTemps);
   const showAdvisory = waveAlert || windAlert;
 
   const astro = astronomyRes.data[0];
-  const sunrise = new Date(astro.sunrise).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const sunset = new Date(astro.sunset).toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
+  const sunrise = DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a');
+  const sunset = DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a');
   const moonPhase = astro.moonPhase?.current?.text || 'Unknown';
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const greeting = getGreetingEmoji(localHour);
-  const dateString = now.toLocaleDateString();
-  const localTime = now.toLocaleTimeString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit' });
-  const utcTime = now.toUTCString().match(/\d{2}:\d{2}/)[0];
+  const dateString = localNow.toFormat('MMM dd');
+  const localTime = localNow.toFormat('hh:mm a');
+  const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 
   const tideSummary = tideRes.data.slice(0, 4).map(t => {
-    const time = new Date(t.time).toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit', timeZone: timezone,
-    });
+    const time = DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a');
     return `${t.type} at ${time}`;
   }).join('\n');
 
@@ -237,37 +161,32 @@ const waterTempMax = Math.max(...waterTemps);
     .addFields(
       { name: 'Date', value: dateString, inline: true },
       { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
-      {
-  name: 'Forecast Window',
-  value: getCurrentForecastWindowLabel(localHour),
-  inline: false
-},
-
+      { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
       {
         name: 'Temperature',
-        value: `🔻 ${tempMin}°F (${((tempMin - 32) * 5 / 9).toFixed(1)}°C)\n🔺 ${tempMax}°F (${((tempMax - 32) * 5 / 9).toFixed(1)}°C)`,
+        value: `🔻 ${tempMin}°F\n🔺 ${tempMax}°F`,
         inline: true
       },
       {
-  name: 'Humidity',
-  value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`,
-  inline: true
-},
+        name: 'Humidity',
+        value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`,
+        inline: true
+      },
       {
         name: 'Wind',
-        value: `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)\n🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)\n➡️ Direction: ${degreesToCompass(windAvgDir)} avg`,
+        value: `🔻 ${mpsToMph(windMin)} mph\n🔺 ${mpsToMph(windMax)} mph\n➡️ ${degreesToCompass(windAvgDir)} avg`,
         inline: true
       },
       {
         name: 'Wave Height',
-        value: `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)\n🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`,
+        value: `🔻 ${metersToFeet(waveMin)} ft\n🔺 ${metersToFeet(waveMax)} ft`,
         inline: true
       },
       {
-  name: 'Water Temp',
-  value: `🔻 ${cToF(waterTempMin)}°F (${waterTempMin.toFixed(1)}°C)\n🔺 ${cToF(waterTempMax)}°F (${waterTempMax.toFixed(1)}°C)`,
-  inline: true
-},
+        name: 'Water Temp',
+        value: `🔻 ${cToF(waterTempMin)}°F\n🔺 ${cToF(waterTempMax)}°F`,
+        inline: true
+      },
       {
         name: 'Sky Conditions',
         value: [...new Set(weatherTypes)].join(', '),

@@ -5,10 +5,16 @@ async function fetchWithFallback(url) {
   const headersSecondary = { Authorization: process.env.STORMGLASS_API_KEY_SECONDARY };
 
   const resPrimary = await fetch(url, { headers: headersPrimary });
-  if (resPrimary.status !== 429) return resPrimary;
+  const jsonPrimary = await resPrimary.clone().json();
 
-  console.warn(`[⚠️] Rate limit hit on primary token for ${url}. Trying secondary...`);
-  return await fetch(url, { headers: headersSecondary });
+  // Trigger fallback if rate limit error is in response body
+  if (jsonPrimary?.errors?.key === 'API quota exceeded') {
+    console.warn(`[⚠️] Primary API key quota exceeded. Falling back...`);
+    const resSecondary = await fetch(url, { headers: headersSecondary });
+    return resSecondary;
+  }
+
+  return resPrimary;
 }
 
 module.exports = fetchWithFallback;

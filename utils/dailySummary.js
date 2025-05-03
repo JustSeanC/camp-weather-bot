@@ -45,6 +45,14 @@ function summarizeSky(clouds) {
   if (avg < 90) return 'Cloudy';
   return 'Overcast';
 }
+function summarizeSky(clouds) {
+  const avg = clouds.reduce((a, b) => a + b, 0) / clouds.length;
+  if (avg < 10) return 'Clear';
+  if (avg < 40) return 'Mostly Sunny';
+  if (avg < 70) return 'Partly Cloudy';
+  if (avg < 90) return 'Cloudy';
+  return 'Overcast';
+}
 
 function getAlertStatus() {
   try {
@@ -117,9 +125,17 @@ const isoEnd = end.toUTC().toISO();
         { name: 'High Temp', value: `${cToF(Math.max(...temps))}°F (${Math.max(...temps).toFixed(1)}°C)`, inline: true },
         { name: 'Low Temp', value: `${cToF(Math.min(...temps))}°F (${Math.min(...temps).toFixed(1)}°C)`, inline: true },
         { name: 'Max Wind Speed', value: `${mpsToMph(Math.max(...winds))} mph (${Math.max(...winds).toFixed(1)} m/s)`, inline: true },
-        { name: 'Max Wave Height', value: `${metersToFeet(Math.max(...waves))} ft (${Math.max(...waves).toFixed(2)} m)`, inline: true },
-        { name: 'Sky Condition', value: skyCondition, inline: true },
+        ...(Math.max(...waves) > 0 ? [{
+          name: 'Max Wave Height',
+          value: `${metersToFeet(Math.max(...waves))} ft (${Math.max(...waves).toFixed(2)} m)`,
+          inline: true
+        }] : []),
         {
+          name: 'Sky Condition',
+          value: summarizeSky(forecastWindow.map(h => h.cloudCover?.noaa ?? 0)),
+          inline: true
+        },
+       {
           name: 'Water Temp (avg)',
           value: `${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F (${(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length).toFixed(1)}°C)`,
           inline: true

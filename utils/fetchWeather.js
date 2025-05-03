@@ -178,11 +178,12 @@ async function fetchForecastEmbed() {
         value: `🔻 ${mpsToMph(windMin)} mph\n🔺 ${mpsToMph(windMax)} mph\n➡️ ${degreesToCompass(windAvgDir)} avg`,
         inline: true
       },
-      {
+      ...(waveMax > 0 ? [{
         name: 'Wave Height',
         value: `🔻 ${metersToFeet(waveMin)} ft\n🔺 ${metersToFeet(waveMax)} ft`,
         inline: true
-      },
+      }] : []),
+      
       {
         name: 'Water Temp',
         value: `🔻 ${cToF(waterTempMin)}°F\n🔺 ${cToF(waterTempMax)}°F`,

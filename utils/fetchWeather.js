@@ -83,8 +83,7 @@ function getOrdinal(n) {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
-// → May 2nd, 2025
+
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
@@ -96,7 +95,7 @@ async function fetchForecastEmbed() {
   const localNow = DateTime.now().setZone(timezone);
   const localHour = localNow.hour;
   const isAfter5PM = localHour >= 17;
-  const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
+  const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`; // e.g. "July 15th, 2025"
   const nextScheduled = localHour < 7 ? 7 : localHour < 12 ? 12 : localHour < 17 ? 17 : 7;
   const spanOverMidnight = isAfter5PM;
   const endHour = nextScheduled;

@@ -82,6 +82,31 @@ function getOrdinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
+  const now = DateTime.utc();
+  const startTime = now.minus({ hours: 1 }).toISO();
+  const endTime = now.toISO();
+
+  const metarUrl = `https://aviationweather.gov/api/data/metars?station=${station}&start=${startTime}&end=${endTime}&format=json`;
+
+  try {
+    const res = await fetch(metarUrl);
+    const json = await res.json();
+
+    const metar = json?.data?.[0];
+    if (!metar) return null;
+
+    const tempC = parseFloat(metar.temp);
+    const humidity = parseFloat(metar.rel_humidity);
+
+    if (isNaN(tempC) || isNaN(humidity)) return null;
+
+    return { tempC, humidity };
+  } catch (err) {
+    console.error('[❌] METAR fetch failed:', err);
+    return null;
+  }
+}
 
 async function fetchForecastEmbed() {
   const [forecastRes, tideRes] = await Promise.all([
@@ -113,7 +138,8 @@ async function fetchForecastEmbed() {
     const forecastDate = DateTime.fromISO(h.time, { zone: timezone });
     return forecastDate >= forecastStart && forecastDate < forecastEnd;
   });
-  
+  const metar = await fetchLatestMetarTempAndHumidity();
+
   console.log('⏱️ Forecast window times:');
 forecastWindow.forEach(h => {
   const time = DateTime.fromISO(h.time, { zone: timezone }).toFormat('ff');
@@ -182,7 +208,16 @@ const tempsCleaned = forecastWindow
   .filter(v => typeof v === 'number');
 
 const tempMinC = tempsCleaned.length ? Math.min(...tempsCleaned) : 0;
-const tempMaxC = tempsCleaned.length ? Math.max(...tempsCleaned) : 0;
+let tempMaxC = tempsCleaned.length ? Math.max(...tempsCleaned) : 0;
+
+// Replace tempMaxC with METAR value if it's higher AND within ±5°C
+if (metar && typeof metar.tempC === 'number') {
+  const maxDiff = Math.abs(metar.tempC - tempMaxC);
+  if (metar.tempC > tempMaxC && maxDiff <= 5) {
+    console.log(`📈 Overriding forecast max with METAR: ${metar.tempC}°C`);
+    tempMaxC = metar.tempC;
+  }
+}
 const tempMin = cToF(tempMinC);
 const tempMax = cToF(tempMaxC);
 
@@ -245,13 +280,16 @@ const tempMax = cToF(tempMaxC);
     const t = getBestTempC(h);
     const hmd = h.humidity?.noaa;
     if (typeof t === 'number' && typeof hmd === 'number') {
-      const hi = computeHeatIndex(t, hmd);
-      return hi ? parseFloat(hi) : null;
+      return computeHeatIndex(t, hmd);
     }
     return null;
   }).filter(v => v !== null);
-  const feelsMin = feelsLikeTemps.length ? Math.min(...feelsLikeTemps).toFixed(1) : null;
-  const feelsMax = feelsLikeTemps.length ? Math.max(...feelsLikeTemps).toFixed(1) : null;
+  
+  if (metar && typeof metar.tempC === 'number' && typeof metar.humidity === 'number') {
+    const hi = computeHeatIndex(metar.tempC, metar.humidity);
+    if (hi && !isNaN(hi)) feelsLikeTemps.push(parseFloat(hi));
+  }
+  
 
   
   // Get tide data

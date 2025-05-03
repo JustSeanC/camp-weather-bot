@@ -96,7 +96,7 @@ async function fetchForecastEmbed() {
   const localNow = DateTime.now().setZone(timezone);
   const localHour = localNow.hour;
   const isAfter5PM = localHour >= 17;
-
+  const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
   const nextScheduled = localHour < 7 ? 7 : localHour < 12 ? 12 : localHour < 17 ? 17 : 7;
   const spanOverMidnight = isAfter5PM;
   const endHour = nextScheduled;
@@ -155,7 +155,6 @@ async function fetchForecastEmbed() {
   const moonEmoji = getMoonEmoji(moonPhase);
 
   const greeting = getGreetingEmoji(localHour);
-  const dateString = localNow.toFormat("MMMM d',' yyyy"); // → May 2, 2025
   const localTime = localNow.toFormat('hh:mm a');
   const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 

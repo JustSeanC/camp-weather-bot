@@ -93,6 +93,7 @@ const isoEnd = end.toUTC().toISO();
     const temps = forecast.map(h => h.airTemperature?.noaa ?? 0);
     const winds = forecast.map(h => h.windSpeed?.noaa ?? 0);
     const waves = forecast.map(h => h.waveHeight?.noaa ?? 0);
+    console.log('[DEBUG] Raw wave heights:', waves);
     const clouds = forecast.map(h => h.cloudCover?.noaa ?? 0);
     const waterTemps = forecast.map(h => h.waterTemperature?.noaa ?? 0);
 

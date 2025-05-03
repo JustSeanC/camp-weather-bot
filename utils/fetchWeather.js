@@ -112,6 +112,7 @@ async function fetchForecastEmbed() {
   const tempsF = forecastWindow.map(h => cToF(h.airTemperature?.noaa ?? 0));
   const winds = forecastWindow.map(h => h.windSpeed?.noaa ?? 0);
   const waveHeights = forecastWindow.map(h => h.waveHeight?.noaa ?? 0);
+  console.log('[DEBUG] Full waveHeight objects:', forecastWindow.map(h => h.waveHeight));
   const weatherTypes = forecastWindow.map(h => {
     const c = h.cloudCover?.noaa ?? 0;
     if (c < 10) return 'Clear';

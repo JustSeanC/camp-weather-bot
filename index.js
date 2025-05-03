@@ -50,7 +50,7 @@ client.once('ready', async () => {
   console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
 // Severe Weather Alerts Check
 scheduleSevereAlertCheck(client);
-console.log('⏰ Scheduled severe weather checks every 10 minutes.');
+console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 
   // 📋 Daily summary at 12:01 AM Eastern
   cron.schedule('1 0 * * *', async () => {

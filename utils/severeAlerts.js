@@ -91,7 +91,7 @@ async function checkSevereAlerts(client) {
 }
 
 function scheduleSevereAlertCheck(client) {
-  cron.schedule('*/10 * * * *', () => checkSevereAlerts(client), {
+  cron.schedule('*/5 * * * *', () => checkSevereAlerts(client), {
     timezone: process.env.TIMEZONE || 'America/New_York'
   });
 }

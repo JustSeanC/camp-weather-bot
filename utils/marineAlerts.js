@@ -58,12 +58,26 @@ async function checkMarineAdvisory(client) {
       sent,
       instruction
     } = alert.properties;
-
+    const RELEVANT_AREAS = [
+      'Chester River',
+      'Chester River to Queenstown MD',
+      'Eastern Bay',
+      'Chesapeake Bay from Pooles Island to Sandy Point MD'
+    ];
+    
+    // Highlight relevant areas in areaDesc
+    const highlightedAreaDesc = areaDesc.split(';').map(area => {
+      const trimmed = area.trim();
+      return RELEVANT_AREAS.some(key => trimmed.includes(key))
+        ? `**__${trimmed}__**`
+        : trimmed;
+    }).join(';\n');
+    
     const embed = new EmbedBuilder()
   .setTitle(`⚠️ ${event} ⚠️`)
   .setDescription(`**${headline}**\n\n${description.split('\n')[0]}`)
   .addFields(
-    { name: 'Area', value: areaDesc, inline: false },
+    { name: 'Area', value: highlightedAreaDesc, inline: false },
     { name: 'Issued', value: new Date(sent).toLocaleString('en-US', { timeZone: 'America/New_York' }), inline: true },
     { name: 'Expires', value: ends ? new Date(ends).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Unknown', inline: true },
     ...(instruction ? [{ name: 'Instructions', value: instruction, inline: false }] : [])

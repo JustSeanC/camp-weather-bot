@@ -51,7 +51,6 @@ async function postDailySummary(client) {
     const isoStart = start.toUTC().toISO();
     const isoEnd = end.toUTC().toISO();
 
-    // Pull StormGlass data for water temp, wave height, sunrise/sunset
     const marineParams = ['waveHeight', 'waterTemperature'];
     const marineURL = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${marineParams.join(',')}&start=${isoStart}&end=${isoEnd}`;
     const astronomyURL = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}&start=${isoStart}`;
@@ -69,31 +68,39 @@ async function postDailySummary(client) {
 
     if (!forecast.length) throw new Error('No Open-Meteo forecast data available');
 
-    const temps = forecast.map(h => h.temperature);
-    const winds = forecast.map(h => h.windSpeed);
-    const clouds = forecast.map(h => h.cloudCover);
+    const temps = forecast.map(h => h.temperature).filter(v => typeof v === 'number');
+    const winds = forecast.map(h => h.windSpeed).filter(v => typeof v === 'number');
+    const clouds = forecast.map(h => h.cloudCover).filter(v => typeof v === 'number');
 
     const marine = marineRes.hours.filter(h => {
       const t = DateTime.fromISO(h.time);
       return t >= start && t <= end;
     });
-    const waves = marine.map(h => h.waveHeight?.sg ?? 0);
-    const waterTemps = marine.map(h => h.waterTemperature?.sg ?? 0);
-
+    const waves = marine.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');
+    const waterTemps = marine.map(h => h.waterTemperature?.sg).filter(v => typeof v === 'number');
+    if (process.argv.includes('--debug')) {
+      console.log(`[🟦] Open-Meteo: ${temps.length} temps, ${winds.length} winds, ${clouds.length} clouds`);
+      console.log(`[🟧] StormGlass: ${waves.length} waves, ${waterTemps.length} water temps`);
+    }
+    
     const startTime = forecast[0].time;
     const endTime = forecast[forecast.length - 1].time;
     const formattedDate = DateTime.fromISO(startTime).setZone(timezone).toLocaleString(DateTime.DATE_FULL);
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('h:mm a') : 'N/A';
     const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('h:mm a') : 'N/A';
-
+    const highTemp = temps.length ? `${cToF(Math.max(...temps))}°F` : 'N/A';
+    const lowTemp = temps.length ? `${cToF(Math.min(...temps))}°F` : 'N/A';
+    const maxWind = winds.length ? `${Math.max(...winds).toFixed(1)} mph` : 'N/A';
+    const skyCond = clouds.length ? summarizeSky(clouds) : 'Unknown';
+    
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
       .setDescription(`Time range: ${DateTime.fromISO(startTime).setZone(timezone).toFormat('h:mm a')} → ${DateTime.fromISO(endTime).setZone(timezone).toFormat('h:mm a')}`)
       .addFields(
-        { name: 'High Temp', value: `${cToF(Math.max(...temps))}°F`, inline: true },
-        { name: 'Low Temp', value: `${cToF(Math.min(...temps))}°F`, inline: true },
-        { name: 'Max Wind Speed', value: `${Math.max(...winds).toFixed(1)} mph`, inline: true },
+          { name: 'High Temp', value: highTemp, inline: true },
+          { name: 'Low Temp', value: lowTemp, inline: true },
+          { name: 'Max Wind Speed', value: maxWind, inline: true },        
         ...(waves.length ? [{
           name: 'Max Wave Height',
           value: `${metersToFeet(Math.max(...waves))} ft`,

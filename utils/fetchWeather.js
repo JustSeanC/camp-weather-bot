@@ -156,41 +156,64 @@ module.exports = {
       });
       
 
-      const tempVals = forecastWindow.map(h =>
-        getBestValue(h, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp', true)
-      ).filter(v => v !== null);
+      function getValuesWithSourceLog(forecastWindow, fallbackKey, sgKey, converter = v => v, label = '', isFallbackFahrenheit = false) {
+        const values = [];
+        const sources = [];
       
+        for (const h of forecastWindow) {
+          const fallbackVal = h?.fallback?.[fallbackKey];
+          const primaryVal = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+      
+          let usedValue = null;
+          let source = null;
+      
+          if (typeof fallbackVal === 'number') {
+            usedValue = isFallbackFahrenheit ? fToC(fallbackVal) : fallbackVal;
+            source = 'Open-Meteo';
+          } else if (typeof primaryVal === 'number') {
+            usedValue = primaryVal;
+            source = 'StormGlass';
+          }
+      
+          if (usedValue !== null) {
+            values.push(converter(usedValue));
+            sources.push(source);
+          }
+        }
+      
+        if (DEBUG_LOG_WEATHER_SOURCE && values.length > 0) {
+          const sourceCount = sources.reduce((acc, s) => {
+            acc[s] = (acc[s] || 0) + 1;
+            return acc;
+          }, {});
+          const mostUsed = Object.entries(sourceCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+          console.log(`✅ ${label} values sourced from: ${mostUsed}`);
+        }
+      
+        return values;
+      }
+      
+      const tempVals = getValuesWithSourceLog(forecastWindow, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp', true);
       const feelsLikeVals = forecastWindow.map(h =>
         typeof h.fallback?.feelsLike === 'number' ? fToC(h.fallback.feelsLike) : null
       ).filter(v => v !== null);
       
-    
-    const humidityVals = forecastWindow.map(h =>
-      getBestValue(h, 'humidity', 'humidity.noaa', v => v, 'Humidity')
-    ).filter(v => v !== null);
-    
-    const windVals = forecastWindow.map(h =>
-      getBestValue(h, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694, 'Wind Speed')
-    ).filter(v => v !== null);
-    
-    const gustVals = forecastWindow.map(h =>
-      getBestValue(h, 'windGust', 'gust.noaa', v => v / 2.23694, 'Gust')
-    ).filter(v => v !== null);
-    
-    const windDirs = forecastWindow.map(h =>
-      getBestValue(h, 'windDir', 'windDirection.noaa', v => v, 'Wind Dir')
-    ).filter(v => typeof v === 'number');
-    
-    const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');
-
-    const waveVals = forecastWindow.map(h =>
-      h.waveHeight?.sg ?? null
-    ).filter(v => typeof v === 'number');
-    
-    const waterTemps = forecastWindow.map(h =>
-      h.waterTemperature?.sg ?? null
-    ).filter(v => typeof v === 'number');
-    
+      const humidityVals = getValuesWithSourceLog(forecastWindow, 'humidity', 'humidity.noaa', v => v, 'Humidity');
+      const windVals = getValuesWithSourceLog(forecastWindow, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694, 'Wind Speed');
+      const gustVals = getValuesWithSourceLog(forecastWindow, 'windGust', 'gust.noaa', v => v / 2.23694, 'Gust');
+      const windDirs = getValuesWithSourceLog(forecastWindow, 'windDir', 'windDirection.noaa', v => v, 'Wind Dir')
+        .filter(v => typeof v === 'number');
+      const cloudCoverVals = getValuesWithSourceLog(forecastWindow, 'cloudCover', 'cloudCover.noaa', v => v, 'Cloud Cover');
+      
+      // StormGlass-only (no hybrid or logging needed)
+      const waveVals = forecastWindow.map(h =>
+        h.waveHeight?.sg ?? null
+      ).filter(v => typeof v === 'number');
+      
+      const waterTemps = forecastWindow.map(h =>
+        h.waterTemperature?.sg ?? null
+      ).filter(v => typeof v === 'number');
+      
 
     const tempMinC = Math.min(...tempVals);
     let tempMaxC = Math.max(...tempVals);

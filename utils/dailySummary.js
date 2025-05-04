@@ -83,20 +83,21 @@ async function postDailySummary(client) {
       console.log(`[🟧] StormGlass: ${waves.length} waves, ${waterTemps.length} water temps`);
     }
     
-    const startTime = forecast[0].time;
-    const endTime = forecast[forecast.length - 1].time;
-    const formattedDate = DateTime.fromISO(startTime).setZone(timezone).toLocaleString(DateTime.DATE_FULL);
+    const forecastStart = DateTime.fromISO(forecast[0].time, { zone: timezone }).toFormat('h:mm a');
+    const forecastEnd = DateTime.fromISO(forecast[forecast.length - 1].time, { zone: timezone }).toFormat('h:mm a');
+
+    const formattedDate = start.toLocaleString(DateTime.DATE_FULL);
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('h:mm a') : 'N/A';
     const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('h:mm a') : 'N/A';
-    const highTemp = temps.length ? `${cToF(Math.max(...temps))}°F` : 'N/A';
-    const lowTemp = temps.length ? `${cToF(Math.min(...temps))}°F` : 'N/A';
+    const highTemp = temps.length ? `${Math.max(...temps).toFixed(1)}°F` : 'N/A';
+    const lowTemp = temps.length ? `${Math.min(...temps).toFixed(1)}°F` : 'N/A';
     const maxWind = winds.length ? `${Math.max(...winds).toFixed(1)} mph` : 'N/A';
     const skyCond = clouds.length ? summarizeSky(clouds) : 'Unknown';
     
     const embed = new EmbedBuilder()
       .setTitle(`📋 Daily Summary for ${formattedDate}`)
-      .setDescription(`Time range: ${DateTime.fromISO(startTime).setZone(timezone).toFormat('h:mm a')} → ${DateTime.fromISO(endTime).setZone(timezone).toFormat('h:mm a')}`)
+      .setDescription(`Time range: ${forecastStart} → ${forecastEnd}`)
       .addFields(
           { name: 'High Temp', value: highTemp, inline: true },
           { name: 'Low Temp', value: lowTemp, inline: true },

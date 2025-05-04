@@ -117,6 +117,11 @@ module.exports = {
     const forecastEnd = localHour >= 17
       ? localNow.plus({ days: 1 }).set({ hour: 7 })
       : localNow.set({ hour: localHour < 7 ? 7 : localHour < 12 ? 12 : 17 });
+      
+      if (!forecastRes || !Array.isArray(forecastRes.hours)) {
+        throw new Error('No valid forecast data returned from StormGlass');
+      }
+    console.warn('[DEBUG] forecastRes:', JSON.stringify(forecastRes, null, 2));
 
     const forecastWindow = forecastRes.hours.filter(h => {
       const t = DateTime.fromISO(h.time, { zone: timezone });

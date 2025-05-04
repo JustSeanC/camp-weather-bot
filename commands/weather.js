@@ -66,10 +66,19 @@ module.exports = {
     const future = DateTime.now().plus({ hours: 1 }).toUTC().toISO();
 
     try {
-      const forecast = await fetchOpenMeteoData(now, future);
-      if (!forecast.length) return interaction.reply('⚠️ Weather data unavailable.');
-
-      const h = forecast[0];
+        const forecast = await fetchOpenMeteoData(now, future);
+        if (!forecast.length) return interaction.reply('⚠️ Weather data unavailable.');
+        
+        // Find the data point closest to now
+        const nowLuxon = DateTime.now().setZone(timezone);
+        const h = forecast.reduce((closest, curr) => {
+          const currTime = DateTime.fromISO(curr.time, { zone: timezone });
+          const closestTime = DateTime.fromISO(closest.time, { zone: timezone });
+          return Math.abs(currTime.diff(nowLuxon).as('minutes')) < Math.abs(closestTime.diff(nowLuxon).as('minutes'))
+            ? curr
+            : closest;
+        });
+        
       const localTime = DateTime.fromISO(h.time).setZone(timezone).toFormat('h:mm a');
 
       const tempC = typeof h.temperature === 'number' ? h.temperature : null;
@@ -83,12 +92,13 @@ module.exports = {
       const [conditionText, emoji] = weatherCodeToText(h.weathercode ?? -1);
 
       const temp = tempC !== null
-        ? isMetric ? `${Math.round(tempC)}°C` : `${Math.round(tempC * 9 / 5 + 32)}°F`
-        : 'N/A';
+  ? isMetric ? `${Math.round(tempC)}°C` : `${Math.round((tempC * 9) / 5 + 32)}°F`
+  : 'N/A';
 
-      const feels = feelsC !== null
-        ? isMetric ? `${Math.round(feelsC)}°C` : `${Math.round(feelsC * 9 / 5 + 32)}°F`
-        : 'N/A';
+const feels = feelsC !== null
+  ? isMetric ? `${Math.round(feelsC)}°C` : `${Math.round((feelsC * 9) / 5 + 32)}°F`
+  : 'N/A';
+
 
       const wind = isMetric
         ? `${(windSpeed * 3.6).toFixed(1)} km/h @ ${windDir}`

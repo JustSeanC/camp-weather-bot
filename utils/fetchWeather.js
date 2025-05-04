@@ -133,7 +133,7 @@ module.exports = {
         const t = DateTime.fromISO(h.time, { zone: timezone });
         return t >= forecastStart && t < forecastEnd;
       }).map(h => {
-        const iso = DateTime.fromISO(h.time).toUTC().toISO({ suppressMilliseconds: true });
+        const iso = DateTime.fromISO(h.time).toUTC().toFormat("yyyy-MM-dd'T'HH:mm");
         const fallback = openMeteoForecast?.find(o => o.time === iso);
         if (fallback) {
           console.log(`[🟦 Open-Meteo] Matched fallback for ${iso}`);
@@ -156,8 +156,14 @@ module.exports = {
       getBestValue(h, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694, 'Wind Speed')
     ).filter(v => v !== null);
     
-    const gustVals = forecastWindow.map(h => getBestValue(h, 'windGust', 'gust.noaa', v => v / 2.23694)).filter(v => v !== null);
-    const windDirs = forecastWindow.map(h => getBestValue(h, 'windDir', 'windDirection.noaa')).filter(v => typeof v === 'number');
+    const gustVals = forecastWindow.map(h =>
+      getBestValue(h, 'windGust', 'gust.noaa', v => v / 2.23694, 'Gust')
+    ).filter(v => v !== null);
+    
+    const windDirs = forecastWindow.map(h =>
+      getBestValue(h, 'windDir', 'windDirection.noaa', v => v, 'Wind Dir')
+    ).filter(v => typeof v === 'number');
+    
     const feelsLikeVals = forecastWindow.map(h => h.fallback?.feelsLike).filter(v => typeof v === 'number');
     const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');
 
@@ -173,8 +179,10 @@ module.exports = {
     const windMin = Math.min(...windVals);
     const windMax = Math.max(...windVals);
     const gustMax = Math.max(...gustVals);
-    const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
-
+    const windAvgDir = windDirs.length
+    ? windDirs.reduce((a, b) => a + b, 0) / windDirs.length
+    : 0;
+  
     const waveMin = waveVals.length ? Math.min(...waveVals) : 0;
     const waveMax = waveVals.length ? Math.max(...waveVals) : 0;
     const waterAvg = waterTemps.length ? waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length : null;

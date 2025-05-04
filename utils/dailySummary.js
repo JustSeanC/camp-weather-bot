@@ -71,7 +71,9 @@ async function postDailySummary(client) {
     const temps = forecast.map(h => h.temperature).filter(v => typeof v === 'number');
     const winds = forecast.map(h => h.windSpeed).filter(v => typeof v === 'number');
     const clouds = forecast.map(h => h.cloudCover).filter(v => typeof v === 'number');
-
+    const feels = forecast.map(h => h.feelsLike).filter(v => typeof v === 'number');
+    const maxFeels = feels.length ? `${Math.max(...feels).toFixed(1)}°F` : 'N/A';
+    
     const marine = marineRes.hours.filter(h => {
       const t = DateTime.fromISO(h.time);
       return t >= start && t <= end;
@@ -79,9 +81,28 @@ async function postDailySummary(client) {
     const waves = marine.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');
     const waterTemps = marine.map(h => h.waterTemperature?.sg).filter(v => typeof v === 'number');
     if (process.argv.includes('--debug')) {
-      console.log(`[🟦] Open-Meteo: ${temps.length} temps, ${winds.length} winds, ${clouds.length} clouds`);
-      console.log(`[🟧] StormGlass: ${waves.length} waves, ${waterTemps.length} water temps`);
+      console.log(`\n[🟦 Open-Meteo Data Counts]`);
+      console.log(`• Temps: ${temps.length}`);
+      console.log(`• Feels Like Temps: ${feels.length}`);
+      console.log(`• Winds: ${winds.length}`);
+      console.log(`• Clouds: ${clouds.length}`);
+    
+      console.log(`\n[🟧 StormGlass Data Counts]`);
+      console.log(`• Waves: ${waves.length}`);
+      console.log(`• Water Temps: ${waterTemps.length}`);
+    
+      if (temps.length) console.log(`✅ High Temp: ${Math.max(...temps).toFixed(1)}°F`);
+      if (feels.length) console.log(`✅ Feels Like Max: ${Math.max(...feels).toFixed(1)}°F`);
+      if (temps.length) console.log(`✅ Low Temp: ${Math.min(...temps).toFixed(1)}°F`);
+      if (winds.length) console.log(`✅ Max Wind Speed: ${Math.max(...winds).toFixed(1)} mph`);
+      if (clouds.length) console.log(`✅ Sky Summary: ${skyCond}`);
+      if (waves.length) console.log(`✅ Max Wave Height: ${metersToFeet(Math.max(...waves))} ft`);
+      if (waterTemps.length) {
+        const avg = waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length;
+        console.log(`✅ Avg Water Temp: ${cToF(avg)}°F`);
+      }
     }
+    
     
     const forecastStart = DateTime.fromISO(forecast[0].time, { zone: timezone }).toFormat('h:mm a');
     const forecastEnd = DateTime.fromISO(forecast[forecast.length - 1].time, { zone: timezone }).toFormat('h:mm a');
@@ -100,6 +121,7 @@ async function postDailySummary(client) {
       .setDescription(`Time range: ${forecastStart} → ${forecastEnd}`)
       .addFields(
           { name: 'High Temp', value: highTemp, inline: true },
+          { name: 'Max Feels Like Temp', value: maxFeels, inline: true },
           { name: 'Low Temp', value: lowTemp, inline: true },
           { name: 'Max Wind Speed', value: maxWind, inline: true },        
         ...(waves.length ? [{
@@ -107,7 +129,7 @@ async function postDailySummary(client) {
           value: `${metersToFeet(Math.max(...waves))} ft`,
           inline: true
         }] : []),
-        { name: 'Sky Condition', value: summarizeSky(clouds), inline: true },
+        { name: 'Sky Condition', value: skyCond, inline: true },
         ...(waterTemps.length ? [{
           name: 'Water Temp (avg)',
           value: `${cToF(waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length)}°F`,
@@ -117,9 +139,9 @@ async function postDailySummary(client) {
         { name: 'Marine Alerts', value: getAlertStatus(), inline: false }
       )
       .setFooter({
-        text: 'Summary based on Open-Meteo, StormGlass & NOAA data',
-        iconURL: 'https://www.noaa.gov/sites/default/files/2022-03/noaa_emblem_logo-2022.png',
+        text: 'Sources: Open-Meteo (air), StormGlass (marine/astro), NOAA (alerts)',
       })
+      
       .setColor(0x0077be)
       .setTimestamp();
 

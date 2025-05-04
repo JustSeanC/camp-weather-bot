@@ -177,8 +177,14 @@ module.exports = {
     
     const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');
 
-    const waveVals = forecastWindow.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');
-    const waterTemps = forecastWindow.map(h => h.waterTemperature?.sg).filter(v => typeof v === 'number');
+    const waveVals = forecastWindow.map(h =>
+      h.waveHeight?.sg ?? null
+    ).filter(v => typeof v === 'number');
+    
+    const waterTemps = forecastWindow.map(h =>
+      h.waterTemperature?.sg ?? null
+    ).filter(v => typeof v === 'number');
+    
 
     const tempMinC = Math.min(...tempVals);
     let tempMaxC = Math.max(...tempVals);

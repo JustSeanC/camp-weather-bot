@@ -1,4 +1,9 @@
-// Enhanced fetchWeather.js with full hybrid logic + restored fields
+/**
+ * Hybrid Data Logic:
+ * - Forecast data (temp, humidity, wind, cloud cover): Prefer Open-Meteo, fallback to StormGlass.
+ * - Marine and astronomy data (waves, water temp, tides, moon/sun): StormGlass only.
+ * - getBestValue() logs which source was used when DEBUG flag is active.
+ */
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');

@@ -7,7 +7,7 @@ const xml2js = require('xml2js');
 const fetchWithFallback = require('./fetchWithFallback');
 const { getCachedAstronomyData } = require('./cacheAstronomy');
 const { fetchOpenMeteoData } = require('./fetchOpenMeteo');
-const DEBUG_LOG_WEATHER_SOURCE = true; // set to false to silence logs
+const DEBUG_LOG_WEATHER_SOURCE = process.argv.includes('--debug');
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -93,20 +93,24 @@ function summarizeSky(clouds) {
 }
 
 function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isFallbackFahrenheit = false) {
-  let fallback = h?.fallback?.[fallbackKey];
-  let primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+  const fallback = h?.fallback?.[fallbackKey];
+  const primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
 
-  // Normalize units
   if (typeof fallback === 'number') {
-    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟦 Open-Meteo] Used for ${label}: ${fallback}`);
-    return converter(isFallbackFahrenheit ? fToC(fallback) : fallback);
+    const used = isFallbackFahrenheit ? fToC(fallback) : fallback;
+    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟦 Open-Meteo] Used for ${label}: ${used}`);
+    return converter(used);
   }
+
   if (typeof primary === 'number') {
     if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟧 StormGlass] Used for ${label}: ${primary}`);
     return converter(primary);
   }
+
   if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[⚠️ Missing] ${label}`);
+  return null;
 }
+
 
 
 

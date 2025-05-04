@@ -129,14 +129,20 @@ module.exports = {
         console.error('[❌] No valid forecast data returned from StormGlass:', JSON.stringify(forecastRes, null, 2));
         throw new Error('No valid forecast data returned from StormGlass');
       }      
-    const forecastWindow = forecastRes.hours.filter(h => {
-      const t = DateTime.fromISO(h.time, { zone: timezone });
-      return t >= forecastStart && t < forecastEnd;
-    }).map(h => {
-      const iso = DateTime.fromISO(h.time, { zone: timezone }).toISO({ suppressMilliseconds: true });
-      const fallback = openMeteoForecast?.find(o => o.time === iso);
-      return { ...h, fallback };
-    });
+      const forecastWindow = forecastRes.hours.filter(h => {
+        const t = DateTime.fromISO(h.time, { zone: timezone });
+        return t >= forecastStart && t < forecastEnd;
+      }).map(h => {
+        const iso = DateTime.fromISO(h.time, { zone: timezone }).toISO({ suppressMilliseconds: true });
+        const fallback = openMeteoForecast?.find(o => o.time === iso);
+        if (fallback) {
+          console.log(`[🟦 Open-Meteo] Matched fallback for ${iso}`);
+        } else {
+          console.log(`[⚠️ No fallback] No Open-Meteo match for ${iso}`);
+        }
+        return { ...h, fallback };
+      });
+      
 
     const tempVals = forecastWindow.map(h =>
       getBestValue(h, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp')

@@ -19,7 +19,7 @@ async function getCachedAstronomyData(astronomyEndpoint) {
     console.warn('⚠️ Failed to read astronomy cache, fetching fresh.');
   }
 
-  const fresh = await fetchWithFallback(astronomyEndpoint).then(r => r.json());
+  const fresh = await fetchWithFallback(astronomyEndpoint);
   fs.writeFileSync(astronomyCachePath, JSON.stringify({
     date: new Date().toISOString(),
     data: fresh

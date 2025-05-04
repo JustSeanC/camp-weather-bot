@@ -93,8 +93,8 @@ function summarizeSky(clouds) {
 }
 
 function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isFallbackFahrenheit = false) {
-  const fallbackVal = h?.fallback?.[fallbackKey];
-  const primaryVal = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+  const fallbackVal = h?.fallback?.[fallbackKey]; // Open-Meteo
+  const primaryVal = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey]; // StormGlass
 
   let usedValue = null;
   let source = null;
@@ -107,18 +107,16 @@ function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isF
     source = '🟧 StormGlass';
   }
 
-  if (usedValue !== null) {
-    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[${source}] Used for ${label}: ${usedValue}`);
-    return converter(usedValue);
+  if (usedValue !== null && DEBUG_LOG_WEATHER_SOURCE) {
+    console.log(`[${source}] Used for ${label}: ${usedValue}`);
   }
 
-  if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[⚠️ Missing] ${label}`);
-  return null;
+  if (usedValue === null && DEBUG_LOG_WEATHER_SOURCE) {
+    console.log(`[⚠️ Missing] ${label}`);
+  }
+
+  return usedValue !== null ? converter(usedValue) : null;
 }
-
-
-
-
 
 module.exports = {
   fetchForecastEmbed: async function () {

@@ -3,13 +3,16 @@ const { DateTime } = require('luxon');
 
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
+const timezone = process.env.TIMEZONE || 'America/New_York';
 
-async function fetchOpenMeteoData() {
-  const now = DateTime.utc();
-  const start = now.toISO({ suppressMilliseconds: true });
-  const end = now.plus({ hours: 12 }).toISO({ suppressMilliseconds: true });
+async function fetchOpenMeteoData(startISO, endISO) {
+  let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,precipitation_probability,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=${timezone}`;
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,precipitation_probability,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=UTC&start=${start}&end=${end}`;
+  if (startISO && endISO) {
+    const startDate = DateTime.fromISO(startISO).toISODate();
+    const endDate = DateTime.fromISO(endISO).toISODate();
+    url += `&start_date=${startDate}&end_date=${endDate}`;
+  }
 
   try {
     const res = await fetch(url);
@@ -17,7 +20,7 @@ async function fetchOpenMeteoData() {
 
     if (!data?.hourly?.time || !Array.isArray(data.hourly.time)) {
       console.warn('[⚠️] Open-Meteo response malformed:', data);
-      return null;
+      return [];
     }
 
     return data.hourly.time.map((time, i) => ({
@@ -36,7 +39,7 @@ async function fetchOpenMeteoData() {
     }));
   } catch (err) {
     console.error('[❌] Open-Meteo fetch failed:', err);
-    return null;
+    return [];
   }
 }
 

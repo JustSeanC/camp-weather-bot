@@ -58,9 +58,9 @@ async function postDailySummary(client) {
     const [marineRes, astronomyRes, openMeteoRes] = await Promise.all([
       fetchWithFallback(marineURL),
       fetchWithFallback(astronomyURL),
-      fetchOpenMeteoData()
+      fetchOpenMeteoData(isoStart, isoEnd)  // pass the date range!
     ]);
-
+    
     const forecast = openMeteoRes.filter(h => {
       const t = DateTime.fromISO(h.time, { zone: timezone });
       return t >= start && t <= end;

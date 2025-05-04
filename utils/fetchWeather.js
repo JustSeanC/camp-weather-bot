@@ -98,18 +98,14 @@ function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isF
 
   // Normalize units
   if (typeof fallback === 'number') {
-    if (isFallbackFahrenheit) {
-      fallback = fToC(fallback); // convert to Celsius for consistency
-    }
-    console.log(`[🟦 Open-Meteo] ${label}: ${fallback}`);
-    return converter(fallback);
+    console.log(`[🟦 Open-Meteo] Used for ${label}: ${fallback}`);
+    return converter(isFallbackFahrenheit ? fToC(fallback) : fallback);
   }
-
   if (typeof primary === 'number') {
-    console.log(`[🟧 StormGlass] ${label}: ${primary}`);
+    console.log(`[🟧 StormGlass] Used for ${label}: ${primary}`);
     return converter(primary);
   }
-
+  
   console.log(`[⚠️ Missing] ${label}`);
   return null;
 }

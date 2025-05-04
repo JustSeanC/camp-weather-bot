@@ -93,23 +93,29 @@ function summarizeSky(clouds) {
 }
 
 function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isFallbackFahrenheit = false) {
-  const fallback = h?.fallback?.[fallbackKey];
-  const primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+  const fallbackVal = h?.fallback?.[fallbackKey];
+  const primaryVal = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
 
-  if (typeof fallback === 'number') {
-    const used = isFallbackFahrenheit ? fToC(fallback) : fallback;
-    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟦 Open-Meteo] Used for ${label}: ${used}`);
-    return converter(used);
+  let usedValue = null;
+  let source = null;
+
+  if (typeof fallbackVal === 'number') {
+    usedValue = isFallbackFahrenheit ? fToC(fallbackVal) : fallbackVal;
+    source = '🟦 Open-Meteo';
+  } else if (typeof primaryVal === 'number') {
+    usedValue = primaryVal;
+    source = '🟧 StormGlass';
   }
 
-  if (typeof primary === 'number') {
-    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟧 StormGlass] Used for ${label}: ${primary}`);
-    return converter(primary);
+  if (usedValue !== null) {
+    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[${source}] Used for ${label}: ${usedValue}`);
+    return converter(usedValue);
   }
 
   if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[⚠️ Missing] ${label}`);
   return null;
 }
+
 
 
 

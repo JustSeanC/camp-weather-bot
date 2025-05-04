@@ -1,4 +1,4 @@
-// Cleaned fetchWeather.js with Open-Meteo primary + StormGlass fallback
+// fetchWeather.js — Open-Meteo primary with StormGlass marine fallback
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
@@ -8,23 +8,19 @@ const fetchWithFallback = require('./fetchWithFallback');
 const { getCachedAstronomyData } = require('./cacheAstronomy');
 const { fetchOpenMeteoData } = require('./fetchOpenMeteo');
 
-// Coordinates and timezone from .env
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
-// StormGlass params (only marine/astro relevant + fallback fields)
 const weatherParams = [
   'airTemperature', 'windSpeed', 'windDirection', 'windGust',
   'cloudCover', 'waveHeight', 'waterTemperature', 'humidity'
 ];
 
-// API endpoints
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
 const astronomyEndpoint = `https://api.stormglass.io/v2/astronomy/point?lat=${lat}&lng=${lng}`;
 
-// Utility functions
 function degreesToCompass(deg) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   return dirs[Math.round(deg / 45) % 8];
@@ -33,7 +29,6 @@ function mpsToMph(ms) { return (ms * 2.23694).toFixed(1); }
 function metersToFeet(m) { return (m * 3.28084).toFixed(1); }
 function cToF(c) { return ((c * 9) / 5 + 32).toFixed(1); }
 
-// Time label for next post
 function getNextForecastTime() {
   const now = DateTime.now().setZone(timezone);
   const nextHour = now.hour < 7 ? 7 : now.hour < 12 ? 12 : now.hour < 17 ? 17 : 7;
@@ -49,7 +44,6 @@ function getCurrentForecastWindowLabel(hour) {
   return `${now.set({ hour }).toFormat('hh:mm a')} → ${end} EDT`;
 }
 
-// Emoji logic
 function getMoonEmoji(phase) {
   const map = {
     'New Moon': '🌑', 'Waxing Crescent': '🌒', 'First Quarter': '🌓',
@@ -69,7 +63,6 @@ function getOrdinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-// Get METAR temp & humidity for fallback
 async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
   const url = `https://aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&stationString=${station}&hoursBeforeNow=1`;
   try {
@@ -90,10 +83,9 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
   }
 }
 
-// Prefer Open-Meteo fallback value over StormGlass
 function getBestValue(h, fallbackKey, sgKey, converter = v => v) {
-  const fallback = h?.fallback?.[fallbackKey];
-  const primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+  const fallback = h?.[fallbackKey];
+  const primary = sgKey.includes('.') ? h?.fallback?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.fallback?.[sgKey];
   if (typeof fallback === 'number') return converter(fallback);
   if (typeof primary === 'number') return converter(primary);
   return null;
@@ -112,39 +104,37 @@ module.exports = {
     const localHour = localNow.hour;
     const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
 
-    // Filter forecast window based on time block
     const forecastStart = localNow;
     const forecastEnd = localHour >= 17
       ? localNow.plus({ days: 1 }).set({ hour: 7 })
       : localNow.set({ hour: localHour < 7 ? 7 : localHour < 12 ? 12 : 17 });
-      
-      if (!forecastRes || !Array.isArray(forecastRes.hours)) {
-        throw new Error('No valid forecast data returned from StormGlass');
-      }
-    console.warn('[DEBUG] forecastRes:', JSON.stringify(forecastRes, null, 2));
 
-    const forecastWindow = forecastRes.hours.filter(h => {
-      const t = DateTime.fromISO(h.time, { zone: timezone });
-      return t >= forecastStart && t < forecastEnd;
-    }).map(h => {
-      const iso = DateTime.fromISO(h.time, { zone: timezone }).toISO({ suppressMilliseconds: true });
-      const fallback = openMeteoForecast?.find(o => o.time === iso);
-      return { ...h, fallback };
-    });
+    let stormGlassHours = Array.isArray(forecastRes?.hours) ? forecastRes.hours : [];
 
-    // Extract values with Open-Meteo preference
+    const forecastWindow = openMeteoForecast
+      .filter(h => {
+        const t = DateTime.fromISO(h.time, { zone: timezone });
+        return t >= forecastStart && t < forecastEnd;
+      })
+      .map(h => {
+        const match = stormGlassHours.find(sg => DateTime.fromISO(sg.time, { zone: timezone }).toISO({ suppressMilliseconds: true }) === h.time);
+        return { ...h, fallback: match };
+      });
+
+    if (forecastWindow.length === 0) {
+      throw new Error('No valid forecast data available from Open-Meteo or StormGlass.');
+    }
+
     const tempVals = forecastWindow.map(h => getBestValue(h, 'temperature', 'airTemperature.noaa')).filter(v => v !== null);
     const humidityVals = forecastWindow.map(h => getBestValue(h, 'humidity', 'humidity.noaa')).filter(v => v !== null);
     const windVals = forecastWindow.map(h => getBestValue(h, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694)).filter(v => v !== null);
     const gustVals = forecastWindow.map(h => getBestValue(h, 'windGust', 'windGust.noaa', v => v / 2.23694)).filter(v => v !== null);
     const windDirs = forecastWindow.map(h => getBestValue(h, 'windDir', 'windDirection.noaa')).filter(v => typeof v === 'number');
 
-    // Apply METAR fallback override for temp max
     const tempMinC = Math.min(...tempVals);
     let tempMaxC = Math.max(...tempVals);
     if (metar && metar.tempC > tempMaxC && Math.abs(metar.tempC - tempMaxC) <= 5) tempMaxC = metar.tempC;
 
-    // Aggregate
     const humidityMin = Math.min(...humidityVals);
     const humidityMax = Math.max(...humidityVals);
     const windMin = Math.min(...windVals);
@@ -152,12 +142,10 @@ module.exports = {
     const gustMax = Math.max(...gustVals);
     const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
 
-    // Marine data from StormGlass only
-    const waveVals = forecastWindow.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');
+    const waveVals = forecastWindow.map(h => h.fallback?.waveHeight?.sg).filter(v => typeof v === 'number');
     const waveMin = waveVals.length ? Math.min(...waveVals) : 0;
     const waveMax = waveVals.length ? Math.max(...waveVals) : 0;
 
-    // Sunrise/sunset, tides, moon
     const showAdvisory = waveMax >= 1.22 || windMax >= 8.05;
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a') : 'N/A';
@@ -168,7 +156,6 @@ module.exports = {
     const localTime = localNow.toFormat('hh:mm a');
     const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 
-    // Final Discord embed
     const embed = new EmbedBuilder()
       .setTitle(`🌤️ Camp Tockwogh Forecast`)
       .addFields(

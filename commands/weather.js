@@ -64,12 +64,12 @@ module.exports = {
         { name: 'Feels Like', value: feels, inline: true },
         { name: 'Humidity', value: `${Math.round(data.humidity)}%`, inline: true },
         { name: 'Precipitation', value: precip, inline: true },
-        { name: 'Wind', value: `${wind} from ${degreesToCardinal(data.windDir)}`, inline: true },
+        { name: 'Wind', value: wind, inline: true },
         { name: 'Gusts', value: gust, inline: true },
         { name: 'Condition', value: desc, inline: false }
-      )      
+      )            
       .setFooter({ text: 'Data from Open-Meteo' })
-      .setColor(0x0077be)
+      .setColor(0x2D7A31)
       .setTimestamp();
 
     await interaction.reply({ embeds: [embed] });

@@ -3,20 +3,13 @@ const { DateTime } = require('luxon');
 
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
-const timezone = process.env.TIMEZONE || 'America/New_York';
-
-function getOpenMeteoForecastHours(currentHour) {
-  if (currentHour < 7) return 7 - currentHour;
-  if (currentHour < 12) return 12 - currentHour;
-  if (currentHour < 17) return 17 - currentHour;
-  return 24 - currentHour + 7;
-}
 
 async function fetchOpenMeteoData() {
-  const localNow = DateTime.now().setZone(timezone);
-  const forecastHours = getOpenMeteoForecastHours(localNow.hour);
+  const now = DateTime.utc();
+  const start = now.toISO({ suppressMilliseconds: true });
+  const end = now.plus({ hours: 12 }).toISO({ suppressMilliseconds: true });
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,precipitation_probability,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_hours=${forecastHours}&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=${timezone}`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,precipitation_probability,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=UTC&start=${start}&end=${end}`;
 
   try {
     const res = await fetch(url);

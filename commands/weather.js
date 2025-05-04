@@ -3,6 +3,37 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { DateTime } = require('luxon');
 const { fetchOpenMeteoData } = require('../utils/fetchOpenMeteo');
 
+function weatherCodeToText(code) {
+  const map = {
+    0: ['Clear', '☀️'],
+    1: ['Mainly Clear', '🌤️'],
+    2: ['Partly Cloudy', '⛅'],
+    3: ['Overcast', '☁️'],
+    45: ['Fog', '🌫️'],
+    48: ['Rime Fog', '🌫️'],
+    51: ['Light Drizzle', '🌦️'],
+    53: ['Moderate Drizzle', '🌧️'],
+    55: ['Dense Drizzle', '🌧️'],
+    56: ['Freezing Drizzle', '🌧️❄️'],
+    57: ['Heavy Freezing Drizzle', '🌧️❄️'],
+    61: ['Light Rain', '🌧️'],
+    63: ['Moderate Rain', '🌧️'],
+    65: ['Heavy Rain', '🌧️'],
+    66: ['Freezing Rain', '🌧️❄️'],
+    67: ['Heavy Freezing Rain', '🌧️❄️'],
+    71: ['Light Snow', '🌨️'],
+    73: ['Moderate Snow', '❄️'],
+    75: ['Heavy Snow', '❄️'],
+    80: ['Light Showers', '🌦️'],
+    81: ['Moderate Showers', '🌧️'],
+    82: ['Violent Showers', '🌧️⚠️'],
+    95: ['Thunderstorm', '⛈️'],
+    96: ['Thunderstorm + Hail', '⛈️❄️'],
+    99: ['Severe Thunderstorm', '⛈️⚠️']
+  };
+  return map[code] || ['Unknown', '❓'];
+}
+
 function summarizeSky(cloudCover) {
   if (cloudCover < 10) return 'Clear';
   if (cloudCover < 40) return 'Mostly Sunny';
@@ -11,16 +42,24 @@ function summarizeSky(cloudCover) {
   return 'Overcast';
 }
 
-function cToF(c) {
-  return ((c * 9) / 5 + 32).toFixed(1);
-}
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('weather')
-    .setDescription('Shows current weather at camp'),
+    .setDescription('Shows current weather at camp')
+    .addStringOption(option =>
+      option.setName('units')
+        .setDescription('Select unit system')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Imperial (°F, mph)', value: 'imperial' },
+          { name: 'Metric (°C, km/h)', value: 'metric' }
+        )
+    ),
 
   async execute(interaction) {
+    const units = interaction.options.getString('units');
+    const isMetric = units === 'metric';
+
     const timezone = process.env.TIMEZONE || 'America/New_York';
     const lat = parseFloat(process.env.LAT);
     const lng = parseFloat(process.env.LNG);
@@ -33,23 +72,27 @@ module.exports = {
       if (!forecast.length) return interaction.reply('⚠️ Weather data unavailable.');
 
       const h = forecast[0];
-      const time = DateTime.fromISO(h.time, { zone: timezone }).toFormat('h:mm a');
-      const tempF = cToF(h.temperature);
-      const feelsF = cToF(h.feelsLike);
-      const humidity = h.humidity;
-      const wind = h.windSpeed.toFixed(1);
-      const windDir = h.windDirection;
+      const localTime = DateTime.now().setZone(timezone).toFormat('h:mm a');
+      const [conditionText, emoji] = weatherCodeToText(h.weathercode);
       const sky = summarizeSky(h.cloudCover);
 
+      const temp = isMetric ? `${Math.round(h.temperature)}°C` : `${Math.round(h.temperature * 9 / 5 + 32)}°F`;
+      const feels = isMetric ? `${Math.round(h.feelsLike)}°C` : `${Math.round(h.feelsLike * 9 / 5 + 32)}°F`;
+      const windSpeed = isMetric ? `${(h.windSpeed * 3.6).toFixed(1)} km/h` : `${h.windSpeed.toFixed(1)} mph`;
+      const gusts = isMetric ? `${(h.windGust * 3.6).toFixed(1)} km/h` : `${h.windGust.toFixed(1)} mph`;
+      const precipitation = isMetric ? `${h.precipitation.toFixed(1)} mm` : `${(h.precipitation / 25.4).toFixed(2)} in`;
+
       const embed = new EmbedBuilder()
-        .setTitle('🌤️ Current Weather')
-        .setDescription(`As of ${time} (${timezone})`)
+        .setTitle(`${emoji} Current Weather`)
+        .setDescription(`As of ${localTime} (${timezone})`)
         .addFields(
-          { name: 'Temperature', value: `${tempF}°F`, inline: true },
-          { name: 'Feels Like', value: `${feelsF}°F`, inline: true },
-          { name: 'Humidity', value: `${humidity}%`, inline: true },
-          { name: 'Wind', value: `${wind} mph @ ${windDir}°`, inline: true },
-          { name: 'Sky Condition', value: sky, inline: true }
+          { name: 'Temperature', value: temp, inline: true },
+          { name: 'Feels Like', value: feels, inline: true },
+          { name: 'Humidity', value: `${Math.round(h.humidity)}%`, inline: true },
+          { name: 'Precipitation', value: precipitation, inline: true },
+          { name: 'Wind', value: `${windSpeed} @ ${Math.round(h.windDirection)}°`, inline: true },
+          { name: 'Gusts', value: gusts, inline: true },
+          { name: 'Sky Condition', value: `${conditionText} (${sky})`, inline: false }
         )
         .setColor(0x0077be)
         .setTimestamp();

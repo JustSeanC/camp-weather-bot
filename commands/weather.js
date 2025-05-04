@@ -1,4 +1,3 @@
-// commands/weather.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { DateTime } = require('luxon');
 const { fetchOpenMeteoData } = require('../utils/fetchOpenMeteo');
@@ -59,7 +58,6 @@ module.exports = {
   async execute(interaction) {
     const units = interaction.options.getString('units');
     const isMetric = units === 'metric';
-
     const timezone = process.env.TIMEZONE || 'America/New_York';
     const lat = parseFloat(process.env.LAT);
     const lng = parseFloat(process.env.LNG);
@@ -72,15 +70,39 @@ module.exports = {
       if (!forecast.length) return interaction.reply('⚠️ Weather data unavailable.');
 
       const h = forecast[0];
-      const localTime = DateTime.now().setZone(timezone).toFormat('h:mm a');
-      const [conditionText, emoji] = weatherCodeToText(h.weathercode);
-      const sky = summarizeSky(h.cloudCover);
+      const localTime = DateTime.fromISO(h.time).setZone(timezone).toFormat('h:mm a');
 
-      const temp = isMetric ? `${Math.round(h.temperature)}°C` : `${Math.round(h.temperature * 9 / 5 + 32)}°F`;
-      const feels = isMetric ? `${Math.round(h.feelsLike)}°C` : `${Math.round(h.feelsLike * 9 / 5 + 32)}°F`;
-      const windSpeed = isMetric ? `${(h.windSpeed * 3.6).toFixed(1)} km/h` : `${h.windSpeed.toFixed(1)} mph`;
-      const gusts = isMetric ? `${(h.windGust * 3.6).toFixed(1)} km/h` : `${h.windGust.toFixed(1)} mph`;
-      const precipitation = isMetric ? `${h.precipitation.toFixed(1)} mm` : `${(h.precipitation / 25.4).toFixed(2)} in`;
+      const tempC = typeof h.temperature === 'number' ? h.temperature : null;
+      const feelsC = typeof h.feelsLike === 'number' ? h.feelsLike : tempC;
+      const humidity = typeof h.humidity === 'number' ? `${Math.round(h.humidity)}%` : 'N/A';
+      const windSpeed = typeof h.windSpeed === 'number' ? h.windSpeed : 0;
+      const windGust = typeof h.windGust === 'number' ? h.windGust : 0;
+      const windDir = typeof h.windDirection === 'number' ? `${Math.round(h.windDirection)}°` : 'N/A';
+      const precipitation = typeof h.precipitation === 'number' ? h.precipitation : 0;
+      const cloudCover = typeof h.cloudCover === 'number' ? h.cloudCover : 0;
+      const [conditionText, emoji] = weatherCodeToText(h.weathercode ?? -1);
+
+      const temp = tempC !== null
+        ? isMetric ? `${Math.round(tempC)}°C` : `${Math.round(tempC * 9 / 5 + 32)}°F`
+        : 'N/A';
+
+      const feels = feelsC !== null
+        ? isMetric ? `${Math.round(feelsC)}°C` : `${Math.round(feelsC * 9 / 5 + 32)}°F`
+        : 'N/A';
+
+      const wind = isMetric
+        ? `${(windSpeed * 3.6).toFixed(1)} km/h @ ${windDir}`
+        : `${windSpeed.toFixed(1)} mph @ ${windDir}`;
+
+      const gusts = isMetric
+        ? `${(windGust * 3.6).toFixed(1)} km/h`
+        : `${windGust.toFixed(1)} mph`;
+
+      const precip = isMetric
+        ? `${precipitation.toFixed(1)} mm`
+        : `${(precipitation / 25.4).toFixed(2)} in`;
+
+      const sky = summarizeSky(cloudCover);
 
       const embed = new EmbedBuilder()
         .setTitle(`${emoji} Current Weather`)
@@ -88,9 +110,9 @@ module.exports = {
         .addFields(
           { name: 'Temperature', value: temp, inline: true },
           { name: 'Feels Like', value: feels, inline: true },
-          { name: 'Humidity', value: `${Math.round(h.humidity)}%`, inline: true },
-          { name: 'Precipitation', value: precipitation, inline: true },
-          { name: 'Wind', value: `${windSpeed} @ ${Math.round(h.windDirection)}°`, inline: true },
+          { name: 'Humidity', value: humidity, inline: true },
+          { name: 'Precipitation', value: precip, inline: true },
+          { name: 'Wind', value: wind, inline: true },
           { name: 'Gusts', value: gusts, inline: true },
           { name: 'Sky Condition', value: `${conditionText} (${sky})`, inline: false }
         )
@@ -102,5 +124,5 @@ module.exports = {
       console.error('[❌] /weather command error:', err);
       await interaction.reply('❌ Failed to fetch weather data.');
     }
-  },
+  }
 };

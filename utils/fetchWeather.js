@@ -133,7 +133,7 @@ module.exports = {
         const t = DateTime.fromISO(h.time, { zone: timezone });
         return t >= forecastStart && t < forecastEnd;
       }).map(h => {
-        const iso = DateTime.fromISO(h.time, { zone: timezone }).toISO({ suppressMilliseconds: true });
+        const iso = DateTime.fromISO(h.time).toUTC().toISO({ suppressMilliseconds: true });
         const fallback = openMeteoForecast?.find(o => o.time === iso);
         if (fallback) {
           console.log(`[🟦 Open-Meteo] Matched fallback for ${iso}`);

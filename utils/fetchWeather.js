@@ -13,9 +13,10 @@ const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
 
 const weatherParams = [
-  'airTemperature', 'windSpeed', 'windDirection', 'windGust',
+  'airTemperature', 'windSpeed', 'windDirection', 'gust',
   'cloudCover', 'waveHeight', 'waterTemperature', 'humidity'
 ];
+
 
 const forecastEndpoint = `https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=${weatherParams.join(',')}`;
 const tideEndpoint = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}`;
@@ -132,7 +133,7 @@ module.exports = {
     const tempVals = forecastWindow.map(h => getBestValue(h, 'temperature', 'airTemperature.noaa')).filter(v => v !== null);
     const humidityVals = forecastWindow.map(h => getBestValue(h, 'humidity', 'humidity.noaa')).filter(v => v !== null);
     const windVals = forecastWindow.map(h => getBestValue(h, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694)).filter(v => v !== null);
-    const gustVals = forecastWindow.map(h => getBestValue(h, 'windGust', 'windGust.noaa', v => v / 2.23694)).filter(v => v !== null);
+    const gustVals = forecastWindow.map(h => getBestValue(h, 'windGust', 'gust.noaa', v => v / 2.23694)).filter(v => v !== null);
     const windDirs = forecastWindow.map(h => getBestValue(h, 'windDir', 'windDirection.noaa')).filter(v => typeof v === 'number');
     const feelsLikeVals = forecastWindow.map(h => h.fallback?.feelsLike).filter(v => typeof v === 'number');
     const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');

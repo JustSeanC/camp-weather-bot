@@ -16,7 +16,15 @@ function weatherCodeToText(code) {
   };
   return map[code] || ['Unknown', '❓'];
 }
-
+function degreesToCardinal(deg) {
+    const directions = [
+      'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+      'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'
+    ];
+    const index = Math.round(deg / 22.5) % 16;
+    return directions[index];
+  }
+  
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('weather')
@@ -56,10 +64,11 @@ module.exports = {
         { name: 'Feels Like', value: feels, inline: true },
         { name: 'Humidity', value: `${Math.round(data.humidity)}%`, inline: true },
         { name: 'Precipitation', value: precip, inline: true },
-        { name: 'Wind', value: `${wind} @ ${Math.round(data.windDir)}°`, inline: true },
+        { name: 'Wind', value: `${windSpeed} from ${degreesToCardinal(h.windDirection)}`, inline: true },
         { name: 'Gusts', value: gust, inline: true },
         { name: 'Condition', value: desc, inline: false }
       )
+      .setFooter({ text: 'Data from Open-Meteo' })
       .setColor(0x0077be)
       .setTimestamp();
 

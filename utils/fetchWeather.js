@@ -1,4 +1,4 @@
-// fetchWeather.js — Open-Meteo primary with StormGlass marine fallback
+// Enhanced fetchWeather.js with full hybrid logic + restored fields
 require('dotenv').config();
 const fetch = require('node-fetch');
 const { EmbedBuilder } = require('discord.js');
@@ -28,6 +28,7 @@ function degreesToCompass(deg) {
 function mpsToMph(ms) { return (ms * 2.23694).toFixed(1); }
 function metersToFeet(m) { return (m * 3.28084).toFixed(1); }
 function cToF(c) { return ((c * 9) / 5 + 32).toFixed(1); }
+function fToC(f) { return ((f - 32) * 5 / 9).toFixed(1); }
 
 function getNextForecastTime() {
   const now = DateTime.now().setZone(timezone);
@@ -36,14 +37,12 @@ function getNextForecastTime() {
   const forecastTime = target.set({ hour: nextHour, minute: 0 });
   return `**${forecastTime.toFormat('hh:mm a')} EDT / ${forecastTime.setZone('UTC').toFormat('HH:mm')} UTC** on ${forecastTime.toFormat('MMM d')}`;
 }
-
 function getCurrentForecastWindowLabel(hour) {
   const now = DateTime.now().setZone(timezone);
   const next = hour < 7 ? 7 : hour < 12 ? 12 : hour < 17 ? 17 : 7;
   const end = hour >= 17 ? '7:00 AM (next day)' : now.set({ hour: next }).toFormat('hh:mm a');
   return `${now.set({ hour }).toFormat('hh:mm a')} → ${end} EDT`;
 }
-
 function getMoonEmoji(phase) {
   const map = {
     'New Moon': '🌑', 'Waxing Crescent': '🌒', 'First Quarter': '🌓',
@@ -58,7 +57,7 @@ function getGreetingEmoji(hour) {
   return '🌇 Good Evening';
 }
 function getOrdinal(n) {
-  const s = ["th", "st", "nd", "rd"];
+  const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
@@ -83,9 +82,18 @@ async function fetchLatestMetarTempAndHumidity(station = 'KMTN') {
   }
 }
 
+function summarizeSky(clouds) {
+  const avg = clouds.reduce((a, b) => a + b, 0) / clouds.length;
+  if (avg < 10) return 'Clear';
+  if (avg < 40) return 'Mostly Sunny';
+  if (avg < 70) return 'Partly Cloudy';
+  if (avg < 90) return 'Cloudy';
+  return 'Overcast';
+}
+
 function getBestValue(h, fallbackKey, sgKey, converter = v => v) {
-  const fallback = h?.[fallbackKey];
-  const primary = sgKey.includes('.') ? h?.fallback?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.fallback?.[sgKey];
+  const fallback = h?.fallback?.[fallbackKey];
+  const primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
   if (typeof fallback === 'number') return converter(fallback);
   if (typeof primary === 'number') return converter(primary);
   return null;
@@ -109,27 +117,25 @@ module.exports = {
       ? localNow.plus({ days: 1 }).set({ hour: 7 })
       : localNow.set({ hour: localHour < 7 ? 7 : localHour < 12 ? 12 : 17 });
 
-    let stormGlassHours = Array.isArray(forecastRes?.hours) ? forecastRes.hours : [];
-
-    const forecastWindow = openMeteoForecast
-      .filter(h => {
-        const t = DateTime.fromISO(h.time, { zone: timezone });
-        return t >= forecastStart && t < forecastEnd;
-      })
-      .map(h => {
-        const match = stormGlassHours.find(sg => DateTime.fromISO(sg.time, { zone: timezone }).toISO({ suppressMilliseconds: true }) === h.time);
-        return { ...h, fallback: match };
-      });
-
-    if (forecastWindow.length === 0) {
-      throw new Error('No valid forecast data available from Open-Meteo or StormGlass.');
-    }
+    const forecastWindow = forecastRes.hours.filter(h => {
+      const t = DateTime.fromISO(h.time, { zone: timezone });
+      return t >= forecastStart && t < forecastEnd;
+    }).map(h => {
+      const iso = DateTime.fromISO(h.time, { zone: timezone }).toISO({ suppressMilliseconds: true });
+      const fallback = openMeteoForecast?.find(o => o.time === iso);
+      return { ...h, fallback };
+    });
 
     const tempVals = forecastWindow.map(h => getBestValue(h, 'temperature', 'airTemperature.noaa')).filter(v => v !== null);
     const humidityVals = forecastWindow.map(h => getBestValue(h, 'humidity', 'humidity.noaa')).filter(v => v !== null);
     const windVals = forecastWindow.map(h => getBestValue(h, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694)).filter(v => v !== null);
     const gustVals = forecastWindow.map(h => getBestValue(h, 'windGust', 'windGust.noaa', v => v / 2.23694)).filter(v => v !== null);
     const windDirs = forecastWindow.map(h => getBestValue(h, 'windDir', 'windDirection.noaa')).filter(v => typeof v === 'number');
+    const feelsLikeVals = forecastWindow.map(h => h.fallback?.feelsLike).filter(v => typeof v === 'number');
+    const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');
+
+    const waveVals = forecastWindow.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');
+    const waterTemps = forecastWindow.map(h => h.waterTemperature?.sg).filter(v => typeof v === 'number');
 
     const tempMinC = Math.min(...tempVals);
     let tempMaxC = Math.max(...tempVals);
@@ -142,11 +148,12 @@ module.exports = {
     const gustMax = Math.max(...gustVals);
     const windAvgDir = windDirs.reduce((a, b) => a + b, 0) / windDirs.length;
 
-    const waveVals = forecastWindow.map(h => h.fallback?.waveHeight?.sg).filter(v => typeof v === 'number');
     const waveMin = waveVals.length ? Math.min(...waveVals) : 0;
     const waveMax = waveVals.length ? Math.max(...waveVals) : 0;
-
+    const waterAvg = waterTemps.length ? waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length : null;
     const showAdvisory = waveMax >= 1.22 || windMax >= 8.05;
+
+    const skyCond = summarizeSky(cloudCoverVals);
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a') : 'N/A';
     const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a') : 'N/A';
@@ -156,32 +163,42 @@ module.exports = {
     const localTime = localNow.toFormat('hh:mm a');
     const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 
+    const tideTimes = tideRes.data?.filter(t => t && t.time)?.slice(0, 4).map(t => `*${t.type}* at ${DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a')}`);
+
     const embed = new EmbedBuilder()
       .setTitle(`🌤️ Camp Tockwogh Forecast`)
       .addFields(
         { name: 'Date', value: dateString, inline: true },
         { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
-        { name: 'Air Temp.', value: `🔻 ${cToF(tempMinC)}°F\n🔹 ${cToF(tempMaxC)}°F`, inline: true },
-        { name: 'Humidity', value: `🔻 ${humidityMin.toFixed(0)}%\n🔹 ${humidityMax.toFixed(0)}%`, inline: true },
+        { name: 'Air Temp.', value: `🔻 ${cToF(tempMinC)}°F (${tempMinC.toFixed(1)}°C)\n🔺 ${cToF(tempMaxC)}°F (${tempMaxC.toFixed(1)}°C)`, inline: true },
+        ...(feelsLikeVals.length ? [{ name: 'Feels Like', value: `🌡️ ${cToF(Math.max(...feelsLikeVals))}°F (${Math.max(...feelsLikeVals).toFixed(1)}°C)`, inline: true }] : []),
+        { name: 'Humidity', value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`, inline: true },
         {
           name: 'Wind',
           value: windMax < 1 ? '🪁 Calm' : [
-            windMin > 0 ? `🔻 ${mpsToMph(windMin)} mph` : null,
-            `🔹 ${mpsToMph(windMax)} mph`,
-            gustMax > windMax ? `💨 Gusts to ${mpsToMph(gustMax)} mph` : null,
+            windMin > 0 ? `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)` : null,
+            `🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)`,
+            gustMax > windMax ? `💨 Gusts to ${mpsToMph(gustMax)} mph (${gustMax.toFixed(1)} m/s)` : null,
             `➡️ ${degreesToCompass(windAvgDir)} avg`
           ].filter(Boolean).join('\n'),
           inline: true
         },
         ...(waveMax > 0 ? [{
           name: 'Wave Height',
-          value: waveMax < 0.3 ? '🌊 Calm' : [
-            waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft` : null,
-            `🔹 ${metersToFeet(waveMax)} ft`
+          value: [
+            waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)` : null,
+            `🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`
           ].filter(Boolean).join('\n'),
           inline: true
         }] : []),
+        ...(waterAvg !== null ? [{
+          name: 'Water Temp.',
+          value: `${cToF(waterAvg)}°F (${waterAvg.toFixed(1)}°C)`,
+          inline: true
+        }] : []),
+        { name: 'Sky Cond.', value: skyCond, inline: true },
+        ...(tideTimes?.length ? [{ name: 'Tides', value: tideTimes.join('\n'), inline: false }] : []),
         { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: true },
         { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: true },
         { name: 'Next Forecast', value: getNextForecastTime(), inline: false },

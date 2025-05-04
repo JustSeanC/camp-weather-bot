@@ -92,20 +92,28 @@ function summarizeSky(clouds) {
   return 'Overcast';
 }
 
-function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '') {
-  const fallback = h?.fallback?.[fallbackKey];
-  const primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isFallbackFahrenheit = false) {
+  let fallback = h?.fallback?.[fallbackKey];
+  let primary = sgKey.includes('.') ? h?.[sgKey.split('.')[0]]?.[sgKey.split('.')[1]] : h?.[sgKey];
+
+  // Normalize units
   if (typeof fallback === 'number') {
+    if (isFallbackFahrenheit) {
+      fallback = fToC(fallback); // convert to Celsius for consistency
+    }
     console.log(`[🟦 Open-Meteo] ${label}: ${fallback}`);
     return converter(fallback);
   }
+
   if (typeof primary === 'number') {
     console.log(`[🟧 StormGlass] ${label}: ${primary}`);
     return converter(primary);
   }
+
   console.log(`[⚠️ Missing] ${label}`);
   return null;
 }
+
 
 
 module.exports = {
@@ -144,9 +152,14 @@ module.exports = {
       });
       
 
-    const tempVals = forecastWindow.map(h =>
-      getBestValue(h, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp')
-    ).filter(v => v !== null);
+      const tempVals = forecastWindow.map(h =>
+        getBestValue(h, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp', true)
+      ).filter(v => v !== null);
+      
+      const feelsLikeVals = forecastWindow.map(h =>
+        typeof h.fallback?.feelsLike === 'number' ? fToC(h.fallback.feelsLike) : null
+      ).filter(v => v !== null);
+      
     
     const humidityVals = forecastWindow.map(h =>
       getBestValue(h, 'humidity', 'humidity.noaa', v => v, 'Humidity')
@@ -164,7 +177,6 @@ module.exports = {
       getBestValue(h, 'windDir', 'windDirection.noaa', v => v, 'Wind Dir')
     ).filter(v => typeof v === 'number');
     
-    const feelsLikeVals = forecastWindow.map(h => h.fallback?.feelsLike).filter(v => typeof v === 'number');
     const cloudCoverVals = forecastWindow.map(h => getBestValue(h, 'cloudCover', 'cloudCover.noaa')).filter(v => typeof v === 'number');
 
     const waveVals = forecastWindow.map(h => h.waveHeight?.sg).filter(v => typeof v === 'number');

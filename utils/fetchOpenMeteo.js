@@ -26,30 +26,38 @@ async function fetchOpenMeteoData(startISO, endISO) {
       return [];
     }
 
-    const currentTime = data.current_weather.time;
+    const currentTime = DateTime.fromISO(data.current_weather.time);
 
-    // Find the hourly record that matches the current time
-    const matchIndex = data.hourly.time.findIndex(t => t === currentTime);
+    // Find closest hour in hourly.time array
+    let bestMatchIndex = -1;
+    let smallestDiff = Infinity;
+    data.hourly.time.forEach((t, i) => {
+      const diff = Math.abs(DateTime.fromISO(t).diff(currentTime).as('minutes'));
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        bestMatchIndex = i;
+      }
+    });
 
-    if (matchIndex === -1) {
+    if (bestMatchIndex === -1) {
       console.warn('[⚠️] No matching hourly data for current time.');
       return [];
     }
 
     return [{
-      time: currentTime,
+      time: currentTime.toISO(),
       temperature: data.current_weather.temperature,
       windSpeed: data.current_weather.windspeed,
       windDir: data.current_weather.winddirection,
       weatherCode: data.current_weather.weathercode,
-      // Supplement with hourly data:
-      humidity: data.hourly.relative_humidity_2m[matchIndex] ?? null,
-      feelsLike: data.hourly.apparent_temperature[matchIndex] ?? null,
-      dewPoint: data.hourly.dew_point_2m[matchIndex] ?? null,
-      precipProb: data.hourly.precipitation_probability[matchIndex] ?? null,
-      precip: data.hourly.precipitation[matchIndex] ?? null,
-      cloudCover: data.hourly.cloud_cover[matchIndex] ?? null,
-      windGust: data.hourly.wind_gusts_10m[matchIndex] ?? null
+      // Supplement with closest hourly data:
+      humidity: data.hourly.relative_humidity_2m[bestMatchIndex] ?? null,
+      feelsLike: data.hourly.apparent_temperature[bestMatchIndex] ?? null,
+      dewPoint: data.hourly.dew_point_2m[bestMatchIndex] ?? null,
+      precipProb: data.hourly.precipitation_probability[bestMatchIndex] ?? null,
+      precip: data.hourly.precipitation[bestMatchIndex] ?? null,
+      cloudCover: data.hourly.cloud_cover[bestMatchIndex] ?? null,
+      windGust: data.hourly.wind_gusts_10m[bestMatchIndex] ?? null
     }];
   } catch (err) {
     console.error('[❌] Open-Meteo fetch failed:', err);

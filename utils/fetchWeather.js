@@ -7,7 +7,7 @@ const xml2js = require('xml2js');
 const fetchWithFallback = require('./fetchWithFallback');
 const { getCachedAstronomyData } = require('./cacheAstronomy');
 const { fetchOpenMeteoData } = require('./fetchOpenMeteo');
-
+const DEBUG_LOG_WEATHER_SOURCE = true; // set to false to silence logs
 const lat = parseFloat(process.env.LAT);
 const lng = parseFloat(process.env.LNG);
 const timezone = process.env.TIMEZONE || 'America/New_York';
@@ -98,16 +98,14 @@ function getBestValue(h, fallbackKey, sgKey, converter = v => v, label = '', isF
 
   // Normalize units
   if (typeof fallback === 'number') {
-    console.log(`[🟦 Open-Meteo] Used for ${label}: ${fallback}`);
+    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟦 Open-Meteo] Used for ${label}: ${fallback}`);
     return converter(isFallbackFahrenheit ? fToC(fallback) : fallback);
   }
   if (typeof primary === 'number') {
-    console.log(`[🟧 StormGlass] Used for ${label}: ${primary}`);
+    if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[🟧 StormGlass] Used for ${label}: ${primary}`);
     return converter(primary);
   }
-  
-  console.log(`[⚠️ Missing] ${label}`);
-  return null;
+  if (DEBUG_LOG_WEATHER_SOURCE) console.log(`[⚠️ Missing] ${label}`);
 }
 
 

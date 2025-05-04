@@ -133,7 +133,7 @@ module.exports = {
     const localHour = localNow.hour;
     const dateString = `${localNow.toFormat('MMMM')} ${getOrdinal(localNow.day)}, ${localNow.year}`;
 
-    const forecastStart = localNow;
+    const forecastStart = localNow.minus({ hours: 4 });
     const forecastEnd = localHour >= 17
       ? localNow.plus({ days: 1 }).set({ hour: 7 })
       : localNow.set({ hour: localHour < 7 ? 7 : localHour < 12 ? 12 : 17 });

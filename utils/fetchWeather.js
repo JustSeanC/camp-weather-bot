@@ -272,16 +272,21 @@ module.exports = {
         { name: 'Date', value: dateString, inline: true },
         { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
-        { name: 'Air Temp.', value: `🔻 ${cToF(tempMinC)}°F (${tempMinC.toFixed(1)}°C)\n🔺 ${cToF(tempMaxC)}°F (${tempMaxC.toFixed(1)}°C)`, inline: true },
-        ...(feelsLikeVals.length ? [{ name: 'Feels Like', value: `🌡️ ${cToF(Math.max(...feelsLikeVals))}°F (${Math.max(...feelsLikeVals).toFixed(1)}°C)`, inline: true }] : []),
+        { name: 'Air Temp.', value: `🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)\n🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)`, inline: true },
+...(feelsLikeVals.length ? [{
+  name: 'Feels Like',
+  value: `🌡️ ${Math.round(cToF(Math.max(...feelsLikeVals)))}°F (${Math.round(Math.max(...feelsLikeVals))}°C)`,
+  inline: true
+}] : []),
         { name: 'Humidity', value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`, inline: true },
         {
           name: 'Wind',
           value: windMax < 1 ? '🪁 Calm' : [
-            windMin > 0 ? `🔻 ${mpsToMph(windMin)} mph (${windMin.toFixed(1)} m/s)` : null,
-            `🔺 ${mpsToMph(windMax)} mph (${windMax.toFixed(1)} m/s)`,
-            gustMax > windMax ? `💨 Gusts to ${mpsToMph(gustMax)} mph (${gustMax.toFixed(1)} m/s)` : null,
-            `➡️ ${degreesToCompass(windAvgDir)} avg`
+  windMin > 0 ? `🔻 ${Math.round(mpsToMph(windMin))} mph (${windMin.toFixed(1)} m/s)` : null,
+  `🔺 ${Math.round(mpsToMph(windMax))} mph (${windMax.toFixed(1)} m/s)`,
+  gustMax > windMax ? `💨 Gusts to ${Math.round(mpsToMph(gustMax))} mph (${gustMax.toFixed(1)} m/s)` : null,
+  `➡️ ${degreesToCompass(windAvgDir)} avg`
+]
           ].filter(Boolean).join('\n'),
           inline: true
         },
@@ -295,7 +300,7 @@ module.exports = {
         }] : []),
         ...(waterAvg !== null ? [{
           name: 'Water Temp.',
-          value: `${cToF(waterAvg)}°F (${waterAvg.toFixed(1)}°C)`,
+value: `${Math.round(cToF(waterAvg))}°F (${Math.round(waterAvg)}°C)`,
           inline: true
         }] : []),
         { name: 'Condition', value: `${emoji} ${desc}`, inline: true },

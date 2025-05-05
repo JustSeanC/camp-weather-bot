@@ -68,8 +68,13 @@ console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 //Countdown to Camp
 const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');
 
-// Daily countdown at 9 AM
+// Daily countdown at 9 AM (skips June 18)
 cron.schedule('0 9 * * *', async () => {
+  const today = DateTime.now().setZone('America/New_York').toISODate();
+
+  // Skip on June 18 (final message will be posted separately)
+  if (today === '2025-06-18') return;
+
   const msg = getCountdownMessage();
   if (msg) {
     const channel = await client.channels.fetch('1331718479446933604');

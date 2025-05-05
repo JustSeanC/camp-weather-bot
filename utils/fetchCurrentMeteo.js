@@ -26,7 +26,7 @@ async function fetchCurrentMeteo() {
       precip: data.current.precipitation ?? null,
       rain: data.current.rain ?? null,
       showers: data.current.showers ?? null,
-      weatherCode: data.current.weathercode ?? null,
+      weatherCode: data.current.weather_code ?? null,
       cloudCover: data.current.cloud_cover ?? null,
       windSpeed: data.current.wind_speed_10m ?? null,
       windDir: data.current.wind_direction_10m ?? null,

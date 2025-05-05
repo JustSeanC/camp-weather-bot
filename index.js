@@ -93,8 +93,8 @@ cron.schedule('0 21 17 6 *', async () => {
 }, { timezone: 'America/New_York' });
 
 
-// Final welcome message at 12 PM on June 18
-cron.schedule('0 12 18 6 *', async () => {
+// Final welcome message replaces countdown on June 18 at 9 AM
+cron.schedule('0 9 18 6 *', async () => {
   const msg = getFinalMessage();
   if (msg) {
     const channel = await client.channels.fetch('1331718479446933604');
@@ -102,6 +102,7 @@ cron.schedule('0 12 18 6 *', async () => {
     await sent.react('🎉');
   }
 }, { timezone: 'America/New_York' });
+
 
 
 

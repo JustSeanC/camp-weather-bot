@@ -65,7 +65,7 @@ module.exports = {
         { name: 'Precipitation', value: precip, inline: true },
         { name: 'Wind', value: wind, inline: true },
         { name: 'Gusts', value: gust, inline: true },
-        { name: 'Condition', value: desc, inline: false }
+        { name: 'Condition', value: `${emoji} ${desc}`, inline: false }
       )
       .setFooter({ text: 'Data from Open-Meteo' })
       .setColor(0x0077be)

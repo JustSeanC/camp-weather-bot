@@ -57,6 +57,19 @@ function getMoonEmoji(phase) {
   };
   return map[phase] || '🌙';
 }
+function getWeatherLabelAndEmoji(code) {
+  const map = {
+    0: ['Clear', '☀️'], 1: ['Mainly Clear', '🌤️'], 2: ['Partly Cloudy', '⛅'], 3: ['Overcast', '☁️'],
+    45: ['Fog', '🌫️'], 48: ['Rime Fog', '🌫️'], 51: ['Light Drizzle', '🌦️'], 53: ['Moderate Drizzle', '🌧️'], 55: ['Dense Drizzle', '🌧️'],
+    56: ['Freezing Drizzle', '🌧️❄️'], 57: ['Heavy Freezing Drizzle', '🌧️❄️'],
+    61: ['Light Rain', '🌧️'], 63: ['Moderate Rain', '🌧️'], 65: ['Heavy Rain', '🌧️'],
+    66: ['Freezing Rain', '🌧️❄️'], 67: ['Heavy Freezing Rain', '🌧️❄️'],
+    71: ['Light Snow', '🌨️'], 73: ['Moderate Snow', '❄️'], 75: ['Heavy Snow', '❄️'],
+    80: ['Light Showers', '🌦️'], 81: ['Moderate Showers', '🌧️'], 82: ['Violent Showers', '🌧️⚠️'],
+    95: ['Thunderstorm', '⛈️'], 96: ['Thunderstorm + Hail', '⛈️❄️'], 99: ['Severe Thunderstorm', '⛈️⚠️']
+  };
+  return map[code] || ['Unknown', '❓'];
+}
 function getGreetingEmoji(hour) {
   if (hour < 12) return '🌅 Good Morning';
   if (hour < 17) return '🌞 Good Afternoon';
@@ -237,6 +250,11 @@ module.exports = {
     const showAdvisory = waveMax >= 1.22 || windMax >= 8.05;
 
     const skyCond = summarizeSky(cloudCoverVals);
+    const weatherCodes = forecastWindow.map(h => h.fallback?.weatherCode ?? null).filter(Boolean);
+    const mostCommonCode = weatherCodes.sort((a,b) =>
+    weatherCodes.filter(v => v === a).length - weatherCodes.filter(v => v === b).length
+    ).pop();
+    const [desc, emoji] = getWeatherLabelAndEmoji(mostCommonCode);
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a') : 'N/A';
     const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a') : 'N/A';
@@ -280,7 +298,7 @@ module.exports = {
           value: `${cToF(waterAvg)}°F (${waterAvg.toFixed(1)}°C)`,
           inline: true
         }] : []),
-        { name: 'Sky Cond.', value: skyCond, inline: true },
+        { name: 'Condition', value: `${emoji} ${desc}`, inline: true },
         ...(tideTimes?.length ? [{ name: 'Tides', value: tideTimes.join('\n'), inline: false }] : []),
         { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: true },
         { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: true },

@@ -31,8 +31,8 @@ async function fetchOpenMeteoData(startISO, endISO) {
       dewPoint: data.hourly.dew_point_2m[i] ?? null,
       precipProb: data.hourly.precipitation_probability[i] ?? null,
       precip: data.hourly.precipitation[i] ?? null,
-      weatherCode: data.hourly.weather_code[i] ?? null,
-      cloudCover: data.hourly.cloud_cover[i] ?? null,
+      weatherCode: data.hourly.weathercode[i] ?? null,
+      cloudCover: data.hourly.cloudcover[i] ?? null,
       windSpeed: data.hourly.wind_speed_10m[i] ?? null,
       windDir: data.hourly.wind_direction_10m[i] ?? null,
       windGust: data.hourly.wind_gusts_10m[i] ?? null

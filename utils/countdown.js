@@ -12,10 +12,11 @@ const target = DateTime.fromObject({
 
 function getCountdownMessage() {
   const now = DateTime.now().setZone('America/New_York');
+
   if (now >= target) return null;
 
   const diff = target.diff(now, ['days']).toObject();
-  const days = Math.floor(diff.days);
+  const days = Math.ceil(diff.days);
 
   return new EmbedBuilder()
     .setTitle('📆 Countdown To Campers')
@@ -25,7 +26,7 @@ function getCountdownMessage() {
 }
 
 function getFinalMessage() {
-  return `@everyone 🎉 **WELCOME CAMPERS! GOOD LUCK STAFF!** 🎉`;
+  return `@everyone 🎉 **THE CAMPERS ARE COMING! GOOD LUCK STAFF!** 🎉`;
 }
 
 module.exports = { getCountdownMessage, getFinalMessage };

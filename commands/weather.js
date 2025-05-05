@@ -16,15 +16,7 @@ function weatherCodeToText(code) {
   };
   return map[code] || ['Unknown', '❓'];
 }
-function degreesToCardinal(deg) {
-    const directions = [
-      'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-      'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'
-    ];
-    const index = Math.round(deg / 22.5) % 16;
-    return directions[index];
-  }
-  
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('weather')
@@ -44,6 +36,13 @@ module.exports = {
     const isMetric = units === 'metric';
     const timezone = process.env.TIMEZONE || 'America/New_York';
 
+    const tzAbbrev = {
+      'America/New_York': 'ET',
+      'America/Chicago': 'CT',
+      'America/Denver': 'MT',
+      'America/Los_Angeles': 'PT'
+    }[timezone] || timezone;
+
     const data = await fetchCurrentMeteo();
     if (!data) return interaction.reply('⚠️ Weather data unavailable.');
 
@@ -58,7 +57,7 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle(`${emoji} Current Weather`)
-      .setDescription(`As of ${dt} (${timezone})`)
+      .setDescription(`As of ${dt} (${tzAbbrev})`)
       .addFields(
         { name: 'Temperature', value: temp, inline: true },
         { name: 'Feels Like', value: feels, inline: true },
@@ -67,11 +66,16 @@ module.exports = {
         { name: 'Wind', value: wind, inline: true },
         { name: 'Gusts', value: gust, inline: true },
         { name: 'Condition', value: desc, inline: false }
-      )            
+      )
       .setFooter({ text: 'Data from Open-Meteo' })
-      .setColor(0x2D7A31)
+      .setColor(0x0077be)
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    const reply = await interaction.reply({ embeds: [embed], fetchReply: true });
+
+    // Auto delete after 2 minutes
+    setTimeout(() => {
+      reply.delete().catch(() => null);
+    }, 2 * 60 * 1000);
   }
 };

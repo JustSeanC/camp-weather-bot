@@ -68,7 +68,7 @@ console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 //Countdown to Camp
 const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');
 
-// Daily countdown at 8 AM
+// Daily countdown at 9 AM
 cron.schedule('0 9 * * *', async () => {
   const msg = getCountdownMessage();
   if (msg) {
@@ -78,8 +78,8 @@ cron.schedule('0 9 * * *', async () => {
   }
 }, { timezone: 'America/New_York' });
 
-// 12-hour countdown post at midnight on June 18
-cron.schedule('0 0 18 6 *', async () => {
+// ⏳ 12-hour warning at 9:00 PM on June 17
+cron.schedule('0 21 17 6 *', async () => {
   const now = DateTime.now().setZone('America/New_York');
   const embed = new EmbedBuilder()
     .setTitle('⏰ Final Countdown!')
@@ -91,6 +91,7 @@ cron.schedule('0 0 18 6 *', async () => {
   const sent = await channel.send({ embeds: [embed] });
   await sent.react('⏳');
 }, { timezone: 'America/New_York' });
+
 
 // Final welcome message at 12 PM on June 18
 cron.schedule('0 12 18 6 *', async () => {

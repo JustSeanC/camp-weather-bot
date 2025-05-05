@@ -281,15 +281,17 @@ module.exports = {
         { name: 'Humidity', value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`, inline: true },
         {
           name: 'Wind',
-          value: windMax < 1 ? '🪁 Calm' : [
-  windMin > 0 ? `🔻 ${Math.round(mpsToMph(windMin))} mph (${windMin.toFixed(1)} m/s)` : null,
-  `🔺 ${Math.round(mpsToMph(windMax))} mph (${windMax.toFixed(1)} m/s)`,
-  gustMax > windMax ? `💨 Gusts to ${Math.round(mpsToMph(gustMax))} mph (${gustMax.toFixed(1)} m/s)` : null,
-  `➡️ ${degreesToCompass(windAvgDir)} avg`
-]
-          ].filter(Boolean).join('\n'),
-          inline: true
+          value: windMax < 1 ? '🪁 Calm' : (
+            [
+              windMin > 0 ? `🔻 ${Math.round(mpsToMph(windMin))} mph (${windMin.toFixed(1)} m/s)` : null,
+              `🔺 ${Math.round(mpsToMph(windMax))} mph (${windMax.toFixed(1)} m/s)`,
+              gustMax > windMax ? `💨 Gusts to ${Math.round(mpsToMph(gustMax))} mph (${gustMax.toFixed(1)} m/s)` : null,
+              `➡️ ${degreesToCompass(windAvgDir)} avg`
+            ].filter(Boolean).join('\n')
+          ),
+          inline: true  // ✅ This was also missing
         },
+                  
         ...(waveMax > 0 ? [{
           name: 'Wave Height',
           value: [

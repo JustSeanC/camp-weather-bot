@@ -272,31 +272,32 @@ module.exports = {
         { name: 'Date', value: dateString, inline: true },
         { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
-        { name: 'Air Temp.', value: `🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)\n🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)`, inline: true },
+        { name: 'Air Temp.', value: `🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)\n🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)`, inline: true },
 ...(feelsLikeVals.length ? [{
   name: 'Feels Like',
   value: `🌡️ ${Math.round(cToF(Math.max(...feelsLikeVals)))}°F (${Math.round(Math.max(...feelsLikeVals))}°C)`,
   inline: true
 }] : []),
-        { name: 'Humidity', value: `🔻 ${humidityMin.toFixed(0)}%\n🔺 ${humidityMax.toFixed(0)}%`, inline: true },
+{ name: 'Humidity', value: `🔺 ${humidityMax.toFixed(0)}%\n🔻 ${humidityMin.toFixed(0)}%`, inline: true },
         {
-          name: 'Wind',
-          value: windMax < 1 ? '🪁 Calm' : (
-            [
-              windMin > 0 ? `🔻 ${Math.round(mpsToMph(windMin))} mph (${windMin.toFixed(1)} m/s)` : null,
-              `🔺 ${Math.round(mpsToMph(windMax))} mph (${windMax.toFixed(1)} m/s)`,
-              gustMax > windMax ? `💨 Gusts to ${Math.round(mpsToMph(gustMax))} mph (${gustMax.toFixed(1)} m/s)` : null,
-              `➡️ ${degreesToCompass(windAvgDir)} avg`
-            ].filter(Boolean).join('\n')
-          ),
-          inline: true  // ✅ This was also missing
-        },
+  name: 'Wind',
+  value: windMax < 1 ? '🪁 Calm' : (
+    [
+      `🔺 ${Math.round(mpsToMph(windMax))} mph (${windMax.toFixed(1)} m/s)`,
+      windMin > 0 ? `🔻 ${Math.round(mpsToMph(windMin))} mph (${windMin.toFixed(1)} m/s)` : null,
+      gustMax > windMax ? `💨 Gusts to ${Math.round(mpsToMph(gustMax))} mph (${gustMax.toFixed(1)} m/s)` : null,
+      `➡️ ${degreesToCompass(windAvgDir)} avg`
+    ].filter(Boolean).join('\n')
+  ),
+  inline: true
+},
+
                   
         ...(waveMax > 0 ? [{
           name: 'Wave Height',
           value: [
-            waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)` : null,
-            `🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`
+            `🔺 ${metersToFeet(waveMax)} ft (${waveMax.toFixed(2)} m)`,
+waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)` : null,
           ].filter(Boolean).join('\n'),
           inline: true
         }] : []),

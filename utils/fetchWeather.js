@@ -247,7 +247,6 @@ module.exports = {
     const waveMin = waveVals.length ? Math.min(...waveVals) : 0;
     const waveMax = waveVals.length ? Math.max(...waveVals) : 0;
     const waterAvg = waterTemps.length ? waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length : null;
-    const showAdvisory = waveMax >= 1.22 || windMax >= 8.05;
 
     const skyCond = summarizeSky(cloudCoverVals);
     const weatherCodes = forecastWindow.map(h => h.fallback?.weatherCode ?? null).filter(Boolean);
@@ -311,14 +310,9 @@ value: `${Math.round(cToF(waterAvg))}°F (${Math.round(waterAvg)}°C)`,
         { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: true },
         { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: true },
         { name: 'Next Forecast', value: getNextForecastTime(), inline: false },
-        ...(showAdvisory ? [{
-          name: '⚠️ Marine Advisory Forecast',
-          value: 'Potential for Small Craft Advisory.\nConditions may be hazardous — use caution.',
-          inline: false
-        }] : [])
       )
       .setFooter({ text: 'Forecast from Open-Meteo + StormGlass hybrid' })
-      .setColor(showAdvisory ? 0xffa500 : 0x00ff00)
+      .setColor(0x00ff00)
       .setTimestamp();
 
     return embed;

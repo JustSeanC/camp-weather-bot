@@ -24,6 +24,7 @@ async function fetchCurrentMeteo() {
       feelsLike: data.current.apparent_temperature ?? null,
       isDay: data.current.is_day,
       precip: data.current.precipitation ?? null,
+      precipProb: data.current.precipitation_probability ?? null,
       rain: data.current.rain ?? null,
       showers: data.current.showers ?? null,
       weatherCode: data.current.weather_code ?? null,

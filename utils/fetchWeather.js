@@ -210,9 +210,15 @@ module.exports = {
       }
       
       const tempVals = getValuesWithSourceLog(forecastWindow, 'temperature', 'airTemperature.noaa', v => v, 'Air Temp', true);
-      const feelsLikeVals = forecastWindow.map(h =>
-        typeof h.fallback?.feelsLike === 'number' ? fToC(h.fallback.feelsLike) : null
-      ).filter(v => v !== null);
+      const feelsLikeValsF = forecastWindow
+  .map(h => typeof h.fallback?.feelsLike === 'number' ? h.fallback.feelsLike : null)
+  .filter(v => v !== null);
+
+const feelsLikeMinF = Math.min(...feelsLikeValsF);
+const feelsLikeMaxF = Math.max(...feelsLikeValsF);
+
+      
+      
       
       const humidityVals = getValuesWithSourceLog(forecastWindow, 'humidity', 'humidity.noaa', v => v, 'Humidity');
       const windVals = getValuesWithSourceLog(forecastWindow, 'windSpeed', 'windSpeed.noaa', v => v / 2.23694, 'Wind Speed');
@@ -249,6 +255,28 @@ module.exports = {
     const waterAvg = waterTemps.length ? waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length : null;
 
     const skyCond = summarizeSky(cloudCoverVals);
+    let blendedCondition;
+
+if ([95, 96, 99].includes(mostCommonCode)) {
+  blendedCondition = 'Thunderstorms likely';
+} else if ([71, 73, 75].includes(mostCommonCode)) {
+  blendedCondition = 'Snow expected';
+} else if ([45, 48].includes(mostCommonCode)) {
+  blendedCondition = 'Foggy';
+} else {
+  // Use sky + precipitation combo
+  blendedCondition = skyCond;
+
+  if (maxPrecipProb >= 80 || totalPrecip >= 0.2) {
+    blendedCondition += ' with heavy rain';
+  } else if (maxPrecipProb >= 50 || totalPrecip >= 0.05) {
+    blendedCondition += ' with possible rain';
+  } else if (maxPrecipProb >= 20) {
+    blendedCondition += ' with slight chance of rain';
+  }
+}
+
+
     const weatherCodes = forecastWindow.map(h => h.fallback?.weatherCode ?? null).filter(Boolean);
     const mostCommonCode = weatherCodes.sort((a,b) =>
     weatherCodes.filter(v => v === a).length - weatherCodes.filter(v => v === b).length
@@ -264,7 +292,18 @@ module.exports = {
     const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 
     const tideTimes = tideRes.data?.filter(t => t && t.time)?.slice(0, 4).map(t => `*${t.type}* at ${DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a')}`);
-
+    
+    const precipProbs = forecastWindow.map(h =>
+      typeof h.fallback?.precipProb === 'number' ? h.fallback.precipProb : null
+    ).filter(v => v !== null);
+    
+    const precipAmounts = forecastWindow.map(h =>
+      typeof h.fallback?.precip === 'number' ? h.fallback.precip : null
+    ).filter(v => v !== null);
+    
+    const maxProb = Math.max(...precipProbs, 0);
+    const totalPrecip = precipAmounts.reduce((a, b) => a + b, 0);
+    
     const embed = new EmbedBuilder()
       .setTitle(`🌤️ Camp Tockwogh Forecast`)
       .addFields(
@@ -272,11 +311,12 @@ module.exports = {
         { name: 'Current Time', value: `${localTime} EDT / ${utcTime} UTC\n${greeting}`, inline: true },
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
         { name: 'Air Temp.', value: `🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)\n🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)`, inline: true },
-...(feelsLikeVals.length ? [{
-  name: 'Feels Like',
-  value: `🌡️ ${Math.round(cToF(Math.max(...feelsLikeVals)))}°F (${Math.round(Math.max(...feelsLikeVals))}°C)`,
-  inline: true
-}] : []),
+        ...(feelsLikeValsF.length ? [{
+          name: 'Feels Like (Min/Max)',
+          value: `🔻 ${feelsLikeMinF.toFixed(1)}°F (${fToC(feelsLikeMinF)}°C)\n🔺 ${feelsLikeMaxF.toFixed(1)}°F (${fToC(feelsLikeMaxF)}°C)`,
+          inline: true
+        }] : []),
+        
 { name: 'Humidity', value: `🔺 ${humidityMax.toFixed(0)}%\n🔻 ${humidityMin.toFixed(0)}%`, inline: true },
         {
   name: 'Wind',
@@ -305,13 +345,13 @@ waveMin > 0 ? `🔻 ${metersToFeet(waveMin)} ft (${waveMin.toFixed(2)} m)` : nul
 value: `${Math.round(cToF(waterAvg))}°F (${Math.round(waterAvg)}°C)`,
           inline: true
         }] : []),
-        { name: 'Condition', value: `${emoji} ${desc}`, inline: true },
+        { name: 'Condition', value: `${emoji} ${blendedCondition}`, inline: true },
         ...(tideTimes?.length ? [{ name: 'Tides', value: tideTimes.join('\n'), inline: false }] : []),
         { name: 'Sunrise / Sunset', value: `🌅 ${sunrise} / 🌇 ${sunset}`, inline: true },
         { name: 'Moon Phase', value: `${moonEmoji} ${moonPhase}`, inline: true },
         { name: 'Next Forecast', value: getNextForecastTime(), inline: false },
       )
-      .setFooter({ text: 'Forecast from Open-Meteo + StormGlass hybrid' })
+      .setFooter({ text: 'Forecast from Open-Meteo & Storm Glass' })
       .setColor(0x00ff00)
       .setTimestamp();
 

@@ -53,7 +53,7 @@ module.exports = {
     const feels = isMetric ? `${((data.feelsLike - 32) * 5 / 9).toFixed(1)}°C` : `${data.feelsLike.toFixed(1)}°F`;
     const wind = isMetric ? `${(data.windSpeed * 1.60934).toFixed(1)} km/h` : `${data.windSpeed.toFixed(1)} mph`;
     const gust = isMetric ? `${(data.windGust * 1.60934).toFixed(1)} km/h` : `${data.windGust.toFixed(1)} mph`;
-    const precip = isMetric ? `${(data.precip * 25.4).toFixed(1)} mm` : `${data.precip.toFixed(2)} in`;
+    const precipProb = `${Math.round(data.precipProb)}%`;
 
     const embed = new EmbedBuilder()
       .setTitle(`${emoji} Current Weather`)
@@ -62,7 +62,7 @@ module.exports = {
         { name: 'Temperature', value: temp, inline: true },
         { name: 'Feels Like', value: feels, inline: true },
         { name: 'Humidity', value: `${Math.round(data.humidity)}%`, inline: true },
-        { name: 'Precipitation', value: precip, inline: true },
+        { name: 'Chance of Rain', value: precipProb, inline: true },
         { name: 'Wind', value: wind, inline: true },
         { name: 'Gusts', value: gust, inline: true },
         { name: 'Condition', value: `${emoji} ${desc}`, inline: false }

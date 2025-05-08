@@ -255,8 +255,26 @@ const feelsLikeMaxF = Math.max(...feelsLikeValsF);
     const waterAvg = waterTemps.length ? waterTemps.reduce((a, b) => a + b, 0) / waterTemps.length : null;
 
     const skyCond = summarizeSky(cloudCoverVals);
-    let blendedCondition;
+      // Precipitation summary (must go before totalPrecip and blendedCondition)
+const precipProbs = forecastWindow.map(h =>
+  typeof h.fallback?.precipProb === 'number' ? h.fallback.precipProb : null
+).filter(v => v !== null);
+const maxProb = Math.max(...precipProbs, 0);
 
+const precipAmounts = forecastWindow.map(h =>
+  typeof h.fallback?.precip === 'number' ? h.fallback.precip : null
+).filter(v => v !== null);
+const totalPrecip = precipAmounts.reduce((a, b) => a + b, 0);
+
+// Weather code summary
+const weatherCodes = forecastWindow.map(h => h.fallback?.weatherCode ?? null).filter(Boolean);
+const mostCommonCode = weatherCodes.sort((a, b) =>
+  weatherCodes.filter(v => v === a).length - weatherCodes.filter(v => v === b).length
+).pop();
+const [desc, emoji] = getWeatherLabelAndEmoji(mostCommonCode);
+
+// Sky condition + precipitation blend
+let blendedCondition;
 if ([95, 96, 99].includes(mostCommonCode)) {
   blendedCondition = 'Thunderstorms likely';
 } else if ([71, 73, 75].includes(mostCommonCode)) {
@@ -264,24 +282,17 @@ if ([95, 96, 99].includes(mostCommonCode)) {
 } else if ([45, 48].includes(mostCommonCode)) {
   blendedCondition = 'Foggy';
 } else {
-  // Use sky + precipitation combo
-  blendedCondition = skyCond;
+  blendedCondition = summarizeSky(cloudCoverVals);
 
-  if (maxPrecipProb >= 80 || totalPrecip >= 0.2) {
+  if (maxProb >= 80 || totalPrecip >= 0.2) {
     blendedCondition += ' with heavy rain';
-  } else if (maxPrecipProb >= 50 || totalPrecip >= 0.05) {
+  } else if (maxProb >= 50 || totalPrecip >= 0.05) {
     blendedCondition += ' with possible rain';
-  } else if (maxPrecipProb >= 20) {
+  } else if (maxProb >= 20) {
     blendedCondition += ' with slight chance of rain';
   }
 }
 
-
-    const weatherCodes = forecastWindow.map(h => h.fallback?.weatherCode ?? null).filter(Boolean);
-    const mostCommonCode = weatherCodes.sort((a,b) =>
-    weatherCodes.filter(v => v === a).length - weatherCodes.filter(v => v === b).length
-    ).pop();
-    const [desc, emoji] = getWeatherLabelAndEmoji(mostCommonCode);
     const astro = astronomyRes.data?.[0] || {};
     const sunrise = astro.sunrise ? DateTime.fromISO(astro.sunrise).setZone(timezone).toFormat('hh:mm a') : 'N/A';
     const sunset = astro.sunset ? DateTime.fromISO(astro.sunset).setZone(timezone).toFormat('hh:mm a') : 'N/A';
@@ -292,17 +303,7 @@ if ([95, 96, 99].includes(mostCommonCode)) {
     const utcTime = localNow.setZone('UTC').toFormat('HH:mm');
 
     const tideTimes = tideRes.data?.filter(t => t && t.time)?.slice(0, 4).map(t => `*${t.type}* at ${DateTime.fromISO(t.time).setZone(timezone).toFormat('h:mm a')}`);
-    
-    const precipProbs = forecastWindow.map(h =>
-      typeof h.fallback?.precipProb === 'number' ? h.fallback.precipProb : null
-    ).filter(v => v !== null);
-    
-    const precipAmounts = forecastWindow.map(h =>
-      typeof h.fallback?.precip === 'number' ? h.fallback.precip : null
-    ).filter(v => v !== null);
-    
-    const maxProb = Math.max(...precipProbs, 0);
-    const totalPrecip = precipAmounts.reduce((a, b) => a + b, 0);
+  
     
     const embed = new EmbedBuilder()
       .setTitle(`🌤️ Camp Tockwogh Forecast`)

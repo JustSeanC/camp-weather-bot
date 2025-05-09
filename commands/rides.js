@@ -8,62 +8,63 @@ module.exports = {
     .setName('rides')
     .setDescription('Manage ride board')
     .addSubcommand(sub =>
-      sub.setName('offer')
-        .setDescription('Offer a ride to/from camp or town')
-        .addStringOption(option =>
-          option.setName('to_from')
-            .setDescription('Direction of the ride')
-            .setRequired(true)
-            .addChoices(
-              { name: 'To Town', value: 'To Town' },
-              { name: 'From Town', value: 'From Town' },
-              { name: 'To Camp', value: 'To Camp' },
-              { name: 'From Camp', value: 'From Camp' },
-              { name: 'Airport', value: 'Airport' }
-            ))
-        .addStringOption(option =>
-          option.setName('time')
-            .setDescription('When is the ride? (e.g., Friday 4pm)')
-            .setRequired(true))
-        .addIntegerOption(option =>
-          option.setName('seats')
-            .setDescription('How many seats are available?')
-            .setRequired(true)
-            .addChoices(
-              { name: '1', value: 1 },
-              { name: '2', value: 2 },
-              { name: '3', value: 3 },
-              { name: '4', value: 4 },
-              { name: '5', value: 5 },
-              { name: '6', value: 6 },
-              { name: '7', value: 7 },
-              { name: '8', value: 8 }
-            ))
-        .addStringOption(option =>
-          option.setName('notes')
-            .setDescription('Optional notes for your ride')
-            .setRequired(false))
-            .addIntegerOption(option =>
-                option.setName('expires_in')
-                  .setDescription('When should this ride expire?')
-                  .setRequired(true)
-                  .addChoices(
-                    { name: '1 day', value: 1 },
-                    { name: '2 days', value: 2 },
-                    { name: '3 days', value: 3 },
-                    { name: '4 days', value: 4 },
-                    { name: '5 days', value: 5 },
-                    { name: '6 days', value: 6 },
-                    { name: '7 days', value: 7 },
-                    { name: '8 days', value: 8 },
-                    { name: '9 days', value: 9 },
-                    { name: '10 days', value: 10 },
-                    { name: '11 days', value: 11 },
-                    { name: '12 days', value: 12 },
-                    { name: '13 days', value: 13 },
-                    { name: '14 days', value: 14 }
-                  ))     
-    ),
+        sub.setName('offer')
+          .setDescription('Offer a ride to/from camp or town')
+          .addStringOption(option =>
+            option.setName('to_from')
+              .setDescription('Direction of the ride')
+              .setRequired(true)
+              .addChoices(
+                { name: 'To Town', value: 'To Town' },
+                { name: 'From Town', value: 'From Town' },
+                { name: 'To Camp', value: 'To Camp' },
+                { name: 'From Camp', value: 'From Camp' },
+                { name: 'Airport', value: 'Airport' }
+              ))
+          .addStringOption(option =>
+            option.setName('time')
+              .setDescription('When is the ride? (e.g., Friday 4pm)')
+              .setRequired(true))
+          .addIntegerOption(option =>
+            option.setName('seats')
+              .setDescription('How many seats are available?')
+              .setRequired(true)
+              .addChoices(
+                { name: '1', value: 1 },
+                { name: '2', value: 2 },
+                { name: '3', value: 3 },
+                { name: '4', value: 4 },
+                { name: '5', value: 5 },
+                { name: '6', value: 6 },
+                { name: '7', value: 7 },
+                { name: '8', value: 8 }
+              ))
+          .addIntegerOption(option =>
+            option.setName('expires_in')
+              .setDescription('When should this ride expire?')
+              .setRequired(true)
+              .addChoices(
+                { name: '1 day', value: 1 },
+                { name: '2 days', value: 2 },
+                { name: '3 days', value: 3 },
+                { name: '4 days', value: 4 },
+                { name: '5 days', value: 5 },
+                { name: '6 days', value: 6 },
+                { name: '7 days', value: 7 },
+                { name: '8 days', value: 8 },
+                { name: '9 days', value: 9 },
+                { name: '10 days', value: 10 },
+                { name: '11 days', value: 11 },
+                { name: '12 days', value: 12 },
+                { name: '13 days', value: 13 },
+                { name: '14 days', value: 14 }
+              ))
+          .addStringOption(option =>
+            option.setName('notes')
+              .setDescription('Optional notes for your ride')
+              .setRequired(false))
+      ),
+      
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();

@@ -60,10 +60,19 @@ rideStore.addRide(reaction.message.id, ride); // <--- ADD THIS LINE
 
     embed.spliceFields(2, 1, { name: 'Seats Available', value: `${newSeats}`, inline: true });
 
-    // If full, mark ride as locked
     if (newSeats === 0) {
-      embed.setColor('Red').addFields({ name: 'Status', value: '🔒 Ride Full' });
-    }
+        embed.setColor('Red');
+      
+        // Replace Join This Ride field
+        const fields = embed.data.fields || [];
+        const joinIndex = fields.findIndex(f => f.name === 'Join This Ride');
+        if (joinIndex !== -1) {
+          embed.spliceFields(joinIndex, 1, { name: 'Status', value: '🔒 Ride Full' });
+        } else {
+          embed.addFields({ name: 'Status', value: '🔒 Ride Full' });
+        }
+      }
+      
 
     await reaction.message.edit({ embeds: [embed] });
   }

@@ -1,6 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+
 const cron = require('node-cron');
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const { DateTime } = require('luxon');
@@ -123,7 +124,65 @@ cron.schedule('0 9 18 6 *', async () => {
 
 
 
+// Clean up expired rides every hour
+const { getAllRides, removeRide } = require('./data/rideStore');
+cron.schedule('*/15 * * * *', () => cleanExpiredRides(client), {
+  timezone: process.env.TIMEZONE || 'America/New_York'
+});
 
+async function cleanExpiredRides(client) {
+  const rides = getAllRides();
+  const now = Date.now();
+
+  for (const ride of Object.values(rides)) {
+    if (ride.expiresAt < now) {
+      try {
+        const channel = await client.channels.fetch(ride.channelId);
+        const message = await channel.messages.fetch(ride.messageId);
+        const embed = EmbedBuilder.from(message.embeds[0]);
+
+        // Replace "Join This Ride" with "Expired"
+        const fields = embed.data.fields || [];
+        const joinIndex = fields.findIndex(f => f.name === 'Join This Ride');
+        if (joinIndex !== -1) {
+          embed.spliceFields(joinIndex, 1, { name: 'Status', value: '⏳ Expired' });
+        } else {
+          embed.addFields({ name: 'Status', value: '⏳ Expired' });
+        }
+
+        embed.setColor('Red');
+        await message.edit({ embeds: [embed] });
+        await message.reactions.removeAll();
+
+        // Optionally delete the thread
+        //if (ride.threadId) {
+        //  const thread = await client.channels.fetch(ride.threadId).catch(() => null);
+         // if (thread && thread.deletable) await thread.delete('Ride expired');
+       // }
+
+        // Save expired ride to a separate file
+        const expiredPath = path.join(__dirname, 'data', 'rides_expired.json');
+        
+        let expired = {};
+        if (fs.existsSync(expiredPath)) {
+          try {
+            expired = JSON.parse(fs.readFileSync(expiredPath, 'utf-8'));
+          } catch (err) {
+            console.warn('⚠️ Failed to read expired rides file:', err.message);
+          }
+        }
+        
+        expired[ride.messageId] = ride;
+        
+        fs.writeFileSync(expiredPath, JSON.stringify(expired, null, 2));
+        removeRide(ride.messageId);
+                console.log(`⏳ Expired ride removed: ${ride.rideId}`);
+      } catch (err) {
+        console.warn(`⚠️ Failed to expire ride ${ride.rideId}:`, err.message);
+      }
+    }
+  }
+}
 
 
 

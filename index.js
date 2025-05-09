@@ -5,6 +5,8 @@ const cron = require('node-cron');
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const { DateTime } = require('luxon');
 const { EmbedBuilder } = require('discord.js');
+const rideStore = require('./data/rideStore');
+rideStore.load(); // <-- ADD THIS LINE
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { postDailySummary } = require('./utils/dailySummary');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');

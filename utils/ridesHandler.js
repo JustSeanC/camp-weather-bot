@@ -39,7 +39,7 @@ module.exports = {
       await thread.members.add(driver.id);
       if (overviewRole) await thread.members.add(overviewRole.id);
     } else {
-      thread = await channel.threads.fetch(ride.threadId).catch(() => null);
+        thread = await reaction.message.guild.channels.fetch(ride.threadId).catch(() => null);
     }
 
     if (!thread) return;

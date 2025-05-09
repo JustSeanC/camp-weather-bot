@@ -9,9 +9,20 @@ const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { postDailySummary } = require('./utils/dailySummary');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
 const { scheduleSevereAlertCheck } = require('./utils/severeAlerts');
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
 });
+
+// 👇 Place this AFTER client is declared
+const ridesHandler = require('./utils/ridesHandler.js');
+client.on('messageReactionAdd', (...args) => ridesHandler.execute(...args));
+
 
 client.commands = new Collection();
 const commands = [];

@@ -1,6 +1,6 @@
 const { EmbedBuilder, Events } = require('discord.js');
 require('dotenv').config();
-const rideStore = require('./rideStore');
+const rideStore = require('../data/rideStore');
 
 module.exports = {
   name: Events.MessageReactionAdd,

@@ -11,20 +11,20 @@ module.exports = {
         sub.setName('offer')
           .setDescription('Offer a ride to/from camp or town')
           .addStringOption(option =>
-            option.setName('to_from')
-              .setDescription('Direction of the ride')
-              .setRequired(true)
-              .addChoices(
-                { name: 'To Town', value: 'To Town' },
-                { name: 'From Town', value: 'From Town' },
-                { name: 'To Camp', value: 'To Camp' },
-                { name: 'From Camp', value: 'From Camp' },
-                { name: 'Airport', value: 'Airport' }
-              ))
-          .addStringOption(option =>
-            option.setName('time')
-              .setDescription('When is the ride? (e.g., Friday 4pm)')
+            option.setName('to')
+              .setDescription('Where is this ride going?')
               .setRequired(true))
+          
+          
+    .addStringOption(option =>
+         option.setName('time')
+            .setDescription('When does the ride depart? (e.g., Friday at 4pm)')
+            .setRequired(true))
+            .addStringOption(option =>
+                option.setName('meeting_location')
+                    .setDescription('Where should riders meet you? (e.g., Dining Hall, Parking Lot B)')
+                    .setRequired(true))
+                     
           .addIntegerOption(option =>
             option.setName('seats')
               .setDescription('How many seats are available?')
@@ -70,8 +70,9 @@ module.exports = {
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'offer') {
-      const direction = interaction.options.getString('to_from');
-      const time = interaction.options.getString('time');
+        const destination = interaction.options.getString('to');
+        const time = interaction.options.getString('time');
+        const meetingLocation = interaction.options.getString('meeting_location');
       const seats = interaction.options.getInteger('seats');
       const notes = interaction.options.getString('notes') || 'None';
       const expiresInDays = interaction.options.getInteger('expires_in');
@@ -87,8 +88,9 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('🚗 Ride Offer')
         .addFields(
-            { name: 'Direction', value: direction, inline: true },
-            { name: 'Time', value: time, inline: true },
+            { name: 'Destination', value: destination, inline: true },
+            { name: 'Departure Time', value: time, inline: true },
+            { name: 'Meeting Location', value: meetingLocation, inline: true },            
             { name: 'Seats Available', value: `${seats}`, inline: true },
             { name: 'Notes', value: notes },
             { name: 'Posted by', value: `<@${interaction.user.id}>` },
@@ -109,7 +111,7 @@ module.exports = {
             threadId: null,
             driverId: interaction.user.id,
             time,
-            direction,
+            destination,
             totalSeats: seats,
             riders: [],
             expiresAt, // ✅ new

@@ -143,64 +143,71 @@ module.exports = {
         });
       }
 
-    // 🔴 CLOSE
+       // 🔴 CLOSE
     } else if (sub === 'close') {
-      const messageId = interaction.options.getString('message_id');
-      const overviewRoleId = process.env.OVERVIEW_ROLE_ID;
-      const isInThread = interaction.channel.isThread();
-      let ride;
-
-      if (messageId) {
-        ride = rideStore.getRide(messageId);
-      } else if (isInThread) {
-        const threadId = interaction.channel.id;
-        ride = Object.values(rideStore.getAllRides()).find(r => r.threadId === threadId);
-      }
-
-      if (!ride) {
-        return interaction.reply({
-          content: '❌ Ride not found. Provide a message ID or use this inside the ride thread.',
-          flags: MessageFlags.Ephemeral
-        });
-      }
-
-      const isOwner = ride.driverId === interaction.user.id;
-      const isOverview = interaction.member.roles.cache.has(overviewRoleId);
-
-      if (!isOwner && !isOverview) {
-        return interaction.reply({
-          content: '❌ You do not have permission to close this ride.',
-          flags: MessageFlags.Ephemeral
-        });
-      }
-
-      try {
-        const channel = await interaction.client.channels.fetch(ride.channelId);
-        const message = await channel.messages.fetch(ride.messageId);
-        const embed = EmbedBuilder.from(message.embeds[0]);
-
-        embed.addFields({ name: 'Status', value: '🔒 Closed Early' });
-        embed.setColor('Red');
-
-        await message.edit({ embeds: [embed] });
-        await message.reactions.removeAll();
-        rideStore.removeRide(ride.messageId);
-
-        return interaction.reply({
-          content: '✅ Ride closed successfully.',
-          flags: MessageFlags.Ephemeral
-        });
-      } catch (err) {
-        console.error('Error closing ride:', err);
-        return interaction.reply({
-          content: '❌ Could not close the ride due to an error.',
-          flags: MessageFlags.Ephemeral
-        });
-      }
+        const messageId = interaction.options.getString('message_id');
+        const overviewRoleId = process.env.OVERVIEW_ROLE_ID;
+        const isInThread = interaction.channel.isThread();
+        let ride;
+  
+        if (messageId) {
+          ride = rideStore.getRide(messageId);
+        }
+  
+        if (!ride && isInThread) {
+          const threadId = interaction.channel.id;
+          const allRides = rideStore.getAllRides();
+          ride = Object.values(allRides).find(r => r.threadId === threadId);
+  
+          console.log('[DEBUG] Looking for ride in thread:', threadId);
+          console.log('[DEBUG] Known threadIds:', Object.values(allRides).map(r => r.threadId));
+        }
+  
+        if (!ride) {
+          return interaction.reply({
+            content: '❌ Ride not found. Provide a message ID or use this inside the ride thread.',
+            flags: MessageFlags.Ephemeral
+          });
+        }
+  
+        const isOwner = ride.driverId === interaction.user.id;
+        const isOverview = interaction.member.roles.cache.has(overviewRoleId);
+  
+        if (!isOwner && !isOverview) {
+          return interaction.reply({
+            content: '❌ You do not have permission to close this ride.',
+            flags: MessageFlags.Ephemeral
+          });
+        }
+  
+        try {
+          const channel = await interaction.client.channels.fetch(ride.channelId);
+          const message = await channel.messages.fetch(ride.messageId);
+          const embed = EmbedBuilder.from(message.embeds[0]);
+  
+          embed.addFields({ name: 'Status', value: '🔒 Closed Early' });
+          embed.setColor('Red');
+  
+          await message.edit({ embeds: [embed] });
+          await message.reactions.removeAll();
+          rideStore.removeRide(ride.messageId);
+  
+          return interaction.reply({
+            content: '✅ Ride closed successfully.',
+            flags: MessageFlags.Ephemeral
+          });
+        } catch (err) {
+          console.error('Error closing ride:', err);
+          return interaction.reply({
+            content: '❌ Could not close the ride due to an error.',
+            flags: MessageFlags.Ephemeral
+          });
+        }
+      } // ✅ close `if (sub === 'close')`
+    }, // ✅ close `execute`
+  
+    getRideStore() {
+      return rideStore;
     }
-  },
-
-  getRideStore() {
-    return rideStore;
-  }
-};
+  };
+  

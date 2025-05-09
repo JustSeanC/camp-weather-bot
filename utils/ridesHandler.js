@@ -33,7 +33,8 @@ module.exports = {
       });
 
       // Save thread ID
-      ride.threadId = thread.id;
+ride.threadId = thread.id;
+rideStore.addRide(reaction.message.id, ride); // <--- ADD THIS LINE
 
       // Add overview role + driver
       await thread.members.add(driver.id);

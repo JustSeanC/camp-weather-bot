@@ -16,10 +16,15 @@ module.exports = {
           option.setName('to')
             .setDescription('Where is this ride going?')
             .setRequired(true))
-        .addStringOption(option =>
-          option.setName('departure')
-            .setDescription('When does the ride depart? Include date and time (e.g., Sat 6/15 at 2:30pm)')
-            .setRequired(true))
+            .addStringOption(option =>
+                option.setName('departure_date')
+                  .setDescription('Date of departure (e.g., Sat 6/15)')
+                  .setRequired(true))
+              .addStringOption(option =>
+                option.setName('departure_time')
+                  .setDescription('Time of departure (e.g., 2:30 PM)')
+                  .setRequired(true))
+              
         .addStringOption(option =>
           option.setName('meeting_location')
             .setDescription('Where should riders meet you? (e.g., Dining Hall, Parking Lot B)')
@@ -70,7 +75,7 @@ module.exports = {
         .setDescription('Close a posted ride early')
         .addStringOption(option =>
           option.setName('message_id')
-            .setDescription('Optional: Message ID of the ride post to close')
+            .setDescription('Message ID or Ride ID of the ride to close')
             .setRequired(false)
         )
     ),
@@ -81,7 +86,16 @@ module.exports = {
     // 🟢 OFFER
     if (sub === 'offer') {
       const destination = interaction.options.getString('to');
-      const departure = interaction.options.getString('departure');
+      const date = interaction.options.getString('departure_date');
+const time = interaction.options.getString('departure_time');
+const departure = `${date} at ${time}`;
+if (!/^\d{1,2}(:\d{2})?\s?(AM|PM)$/i.test(time)) {
+    return interaction.reply({
+      content: '❌ Time format looks invalid. Please use something like `2:30 PM` or `10 AM`.',
+      ephemeral: true
+    });
+  }
+  
       const meetingLocation = interaction.options.getString('meeting_location');
       const seats = interaction.options.getInteger('seats');
       const notes = interaction.options.getString('notes') || 'None';
@@ -151,8 +165,15 @@ module.exports = {
         let ride;
   
         if (messageId) {
-          ride = rideStore.getRide(messageId);
-        }
+            ride = rideStore.getRide(messageId);
+          
+            // Fallback: match by rideId (human-friendly ID shown in footer)
+            if (!ride) {
+              const allRides = rideStore.getAllRides();
+              ride = Object.values(allRides).find(r => r.rideId === messageId);
+            }
+          }
+          
   
         if (!ride && isInThread) {
           const threadId = interaction.channel.id;

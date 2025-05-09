@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, InteractionResponseFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags} = require('discord.js');
 const { v4: uuidv4 } = require('uuid');
 const rideStore = require('../data/rideStore');
 require('dotenv').config();
@@ -94,7 +94,7 @@ module.exports = {
       if (!rideChannel) {
         return interaction.reply({
           content: '❌ Ride channel not found. Check RIDE_CHANNEL_ID in your .env.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -133,13 +133,13 @@ module.exports = {
 
         await interaction.reply({
           content: '✅ Your ride has been posted to the board!',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       } catch (err) {
         console.error('❌ Error posting ride:', err);
         await interaction.reply({
           content: 'Something went wrong while posting your ride.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -160,7 +160,7 @@ module.exports = {
       if (!ride) {
         return interaction.reply({
           content: '❌ Ride not found. Provide a message ID or use this inside the ride thread.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -170,7 +170,7 @@ module.exports = {
       if (!isOwner && !isOverview) {
         return interaction.reply({
           content: '❌ You do not have permission to close this ride.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -188,13 +188,13 @@ module.exports = {
 
         return interaction.reply({
           content: '✅ Ride closed successfully.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       } catch (err) {
         console.error('Error closing ride:', err);
         return interaction.reply({
           content: '❌ Could not close the ride due to an error.',
-          flags: InteractionResponseFlags.Ephemeral
+          flags: MessageFlags.Ephemeral
         });
       }
     }

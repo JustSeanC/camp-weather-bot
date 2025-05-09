@@ -51,7 +51,16 @@ module.exports = {
                     { name: '1 day', value: 1 },
                     { name: '2 days', value: 2 },
                     { name: '3 days', value: 3 },
-                    ...
+                    { name: '4 days', value: 4 },
+                    { name: '5 days', value: 5 },
+                    { name: '6 days', value: 6 },
+                    { name: '7 days', value: 7 },
+                    { name: '8 days', value: 8 },
+                    { name: '9 days', value: 9 },
+                    { name: '10 days', value: 10 },
+                    { name: '11 days', value: 11 },
+                    { name: '12 days', value: 12 },
+                    { name: '13 days', value: 13 },
                     { name: '14 days', value: 14 }
                   ))     
     ),

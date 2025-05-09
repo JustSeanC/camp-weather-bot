@@ -48,7 +48,7 @@ module.exports = {
     await thread.members.add(rider.id);
 
     // Post intro message in thread
-    await thread.send(`👋 <@${ride.driverId}> and <@${user.id}>, you've been connected for a ride **${ride.direction}** at **${ride.time}**.`);
+    await thread.send(`👋 <@${ride.driverId}> and <@${user.id}>, you've been connected for a ride **${ride.direction}** at **${ride.departure}**.`);
 
     // Update internal ride state
     ride.riders.push(user.id);

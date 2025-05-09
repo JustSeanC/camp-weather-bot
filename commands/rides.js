@@ -1,3 +1,4 @@
+const { InteractionResponseFlags } = require('discord.js');
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { v4: uuidv4 } = require('uuid');
 const rideStore = require('../data/rideStore');
@@ -16,14 +17,16 @@ module.exports = {
               .setRequired(true))
           
           
-    .addStringOption(option =>
-         option.setName('time')
-            .setDescription('When does the ride depart? (e.g., Friday at 4pm)')
-            .setRequired(true))
-            .addStringOption(option =>
-                option.setName('meeting_location')
-                    .setDescription('Where should riders meet you? (e.g., Dining Hall, Parking Lot B)')
-                    .setRequired(true))
+              .addStringOption(option =>
+                option.setName('departure')
+                  .setDescription('When does the ride depart? Include date and time (e.g., Sat 6/15 at 2:30pm)')
+                  .setRequired(true))
+                  
+                  .addStringOption(option =>
+                    option.setName('meeting_location')
+                      .setDescription('Where should riders meet you? (e.g., Dining Hall, Parking Lot B)')
+                      .setRequired(true))
+                        
                      
           .addIntegerOption(option =>
             option.setName('seats')
@@ -71,7 +74,7 @@ module.exports = {
 
     if (sub === 'offer') {
         const destination = interaction.options.getString('to');
-        const time = interaction.options.getString('time');
+        const departure = interaction.options.getString('departure');
         const meetingLocation = interaction.options.getString('meeting_location');
       const seats = interaction.options.getInteger('seats');
       const notes = interaction.options.getString('notes') || 'None';
@@ -89,7 +92,7 @@ module.exports = {
         .setTitle('🚗 Ride Offer')
         .addFields(
             { name: 'Destination', value: destination, inline: true },
-            { name: 'Departure Time', value: time, inline: true },
+            { name: 'Departure Time', value: departure, inline: true },
             { name: 'Meeting Location', value: meetingLocation, inline: true },            
             { name: 'Seats Available', value: `${seats}`, inline: true },
             { name: 'Notes', value: notes },
@@ -110,7 +113,7 @@ module.exports = {
             channelId: rideChannel.id,
             threadId: null,
             driverId: interaction.user.id,
-            time,
+            departure,
             destination,
             totalSeats: seats,
             riders: [],
@@ -118,7 +121,10 @@ module.exports = {
           });
           
 
-        await interaction.reply({ content: '✅ Your ride has been posted to the board!', ephemeral: true });
+        await interaction.reply({ 
+            content: '✅ Your ride has been posted to the board!', 
+            flags: InteractionResponseFlags.Ephemeral
+        });
       } catch (err) {
         console.error('❌ Error posting ride:', err);
         await interaction.reply({ content: 'Something went wrong while posting your ride.', ephemeral: true });

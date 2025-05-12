@@ -24,9 +24,15 @@ async function checkMarineAdvisory(client) {
     const res = await fetch(ALERT_API, { headers: { 'User-Agent': 'CampWeatherBot/1.0' } });
     const data = await res.json();
 
-    const alert = data.features.find(
-      alert => alert.properties.event.toLowerCase().includes('small craft')
-    );
+    if (!data || !Array.isArray(data.features)) {
+  console.error('[❌] Unexpected response format from marine alert API:', JSON.stringify(data).slice(0, 300));
+  return;
+}
+
+const alert = data.features.find(
+  alert => alert.properties.event.toLowerCase().includes('small craft')
+);
+
 
     if (!alert || alert.id === lastAlertId) return;
 

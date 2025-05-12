@@ -41,7 +41,20 @@ function emojiForEvent(event) {
 async function checkSevereAlerts(client) {
   try {
     const res = await fetch(ALERT_API, { headers: { 'User-Agent': 'CampWeatherBot/1.0' } });
-    const data = await res.json();
+    const text = await res.text();
+if (text.trim().startsWith('<')) {
+  console.error('❌ NOAA returned HTML instead of JSON:', text.slice(0, 300));
+  return;
+}
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch (parseErr) {
+  console.error('❌ Failed to parse severe weather JSON:', parseErr.message);
+  return;
+}
+
 
     const alerts = (data.features || []).filter(alert =>
       ['Moderate', 'Severe', 'Extreme'].includes(alert.properties.severity)

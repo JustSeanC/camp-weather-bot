@@ -313,10 +313,11 @@ if ([95, 96, 99].includes(mostCommonCode)) {
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
         { name: 'Air Temp.', value: `🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)\n🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)`, inline: true },
         ...(feelsLikeValsF.length ? [{
-          name: 'Feels Like (Min/Max)',
-          value: `🔻 ${feelsLikeMinF.toFixed(1)}°F (${fToC(feelsLikeMinF)}°C)\n🔺 ${feelsLikeMaxF.toFixed(1)}°F (${fToC(feelsLikeMaxF)}°C)`,
-          inline: true
-        }] : []),
+  name: 'Feels Like (Max/Min)',
+  value: `🔺 ${feelsLikeMaxF.toFixed(1)}°F (${fToC(feelsLikeMaxF)}°C)\n🔻 ${feelsLikeMinF.toFixed(1)}°F (${fToC(feelsLikeMinF)}°C)`,
+  inline: true
+}] : []),
+
         
 { name: 'Humidity', value: `🔺 ${humidityMax.toFixed(0)}%\n🔻 ${humidityMin.toFixed(0)}%`, inline: true },
         {

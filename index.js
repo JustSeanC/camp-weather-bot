@@ -177,9 +177,15 @@ async function cleanExpiredRides(client) {
         fs.writeFileSync(expiredPath, JSON.stringify(expired, null, 2));
         removeRide(ride.messageId);
                 console.log(`⏳ Expired ride removed: ${ride.rideId}`);
-      } catch (err) {
-        console.warn(`⚠️ Failed to expire ride ${ride.rideId}:`, err.message);
-      }
+              } catch (err) {
+                if (err.code === 10008) {
+                  console.warn(`🧹 Ride ${ride.rideId} was already deleted in Discord. Cleaning up.`);
+                } else {
+                  console.warn(`⚠️ Failed to expire ride ${ride.rideId}:`, err.message);
+                }
+              
+                removeRide(ride.messageId);
+              }  
     }
   }
 }

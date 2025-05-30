@@ -11,7 +11,7 @@ rideStore.load(); // <-- ADD THIS LINE
 const { fetchForecastEmbed } = require('./utils/fetchWeather');
 const { postDailySummary } = require('./utils/dailySummary');
 const { scheduleMarineAdvisoryCheck } = require('./utils/marineAlerts');
-const { scheduleSevereAlertCheck } = require('./utils/severeAlerts');
+const { scheduleSevereAlertCheck, checkSevereAlerts } = require('./utils/severeAlerts');
 
 const client = new Client({
   intents: [
@@ -67,6 +67,11 @@ client.once('ready', async () => {
 scheduleSevereAlertCheck(client);
 console.log('⏰ Scheduled severe weather checks every 5 minutes.');
 
+// TEMPORARY: force severe check right after boot
+  setTimeout(() => checkSevereAlerts(client), 5000);
+});
+
+
   // 📋 Daily summary at 12:01 AM Eastern
   cron.schedule('1 0 * * *', async () => {
     try {
@@ -77,7 +82,7 @@ console.log('⏰ Scheduled severe weather checks every 5 minutes.');
   }, {
     timezone: process.env.TIMEZONE || 'America/New_York'
   });
-});
+
 
 //Countdown to Camp
 const { getCountdownMessage, getFinalMessage } = require('./utils/countdown');

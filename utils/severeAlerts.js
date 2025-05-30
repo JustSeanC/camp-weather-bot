@@ -93,6 +93,7 @@ try {
       if (pingText) {
         await channel.send({ content: pingText });
       }
+      console.log(`📢 Will post alert: ${event} (${id})`);
 
       await channel.send({ embeds: [embed] });
 

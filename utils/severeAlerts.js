@@ -54,6 +54,11 @@ try {
   console.error('❌ Failed to parse severe weather JSON:', parseErr.message);
   return;
 }
+console.log(`🔎 NOAA returned ${data.features?.length || 0} alerts`);
+for (const alert of data.features || []) {
+  const { event, severity, id } = alert.properties;
+  console.log(`→ ${event} | Severity: ${severity} | ID: ${id}`);
+}
 
 
     const alerts = (data.features || []).filter(alert =>

@@ -4,7 +4,6 @@ const { EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
-const cron = require('node-cron');
 
 // Load last ID from disk
 let lastAlertId = null;

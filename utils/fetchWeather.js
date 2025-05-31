@@ -313,7 +313,7 @@ if ([95, 96, 99].includes(mostCommonCode)) {
         { name: 'Forecast Window', value: getCurrentForecastWindowLabel(localHour), inline: false },
         { name: 'Air Temp.', value: `🔺 ${Math.round(cToF(tempMaxC))}°F (${Math.round(tempMaxC)}°C)\n🔻 ${Math.round(cToF(tempMinC))}°F (${Math.round(tempMinC)}°C)`, inline: true },
         ...(feelsLikeValsF.length ? [{
-  name: 'Feels Like (Max/Min)',
+  name: 'Feels Like',
   value: `🔺 ${feelsLikeMaxF.toFixed(1)}°F (${fToC(feelsLikeMaxF)}°C)\n🔻 ${feelsLikeMinF.toFixed(1)}°F (${fToC(feelsLikeMinF)}°C)`,
   inline: true
 }] : []),

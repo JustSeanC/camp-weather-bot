@@ -5,8 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const cron = require('node-cron');
 
-const SEVERE_ZONE = 'MDZ017'; // Kent County, MD
-const ALERT_API = `https://api.weather.gov/alerts/active?zone=${SEVERE_ZONE}`;
+const ALERT_API = 'https://api.weather.gov/alerts/active?point=39.2449,-75.9791';
 const alertFilePath = path.join(__dirname, '../data/lastSevereAlerts.json');
 
 // Load last IDs from disk

@@ -4,6 +4,7 @@ const { EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const alertFilePath = path.join(__dirname, '../data/lastMarineAlert.json');
+const cron = require('node-cron');
 
 // Load last ID from disk
 let lastAlertId = null;
@@ -105,13 +106,17 @@ if (!isRelevant) {
   }
 }
 
+const cron = require('node-cron');
+
 module.exports = {
   scheduleMarineAdvisoryCheck(client) {
-    const intervalMs = CHECK_INTERVAL_MINUTES * 60 * 1000;
-    setInterval(() => {
+    cron.schedule('*/5 * * * *', () => {
       console.log('🌊 Running scheduled marine advisory check...');
       checkMarineAdvisory(client);
-    }, intervalMs);
+    }, {
+      timezone: process.env.TIMEZONE || 'America/New_York'
+    });
   }
 };
+
 

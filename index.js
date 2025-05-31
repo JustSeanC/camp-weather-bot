@@ -60,9 +60,9 @@ client.once('ready', async () => {
     });
   });
 
-  // 🌀 Marine advisory checks
-  scheduleMarineAdvisoryCheck(client);
-  console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
+// 🌀 Marine advisory checks
+scheduleMarineAdvisoryCheck(client);
+console.log('⏰ Scheduled marine advisory checks every 5 minutes.');
 // Severe Weather Alerts Check
 scheduleSevereAlertCheck(client);
 console.log('⏰ Scheduled severe weather checks every 5 minutes.');

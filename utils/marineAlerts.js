@@ -108,6 +108,10 @@ if (!isRelevant) {
 module.exports = {
   scheduleMarineAdvisoryCheck(client) {
     const intervalMs = CHECK_INTERVAL_MINUTES * 60 * 1000;
-    setInterval(() => checkMarineAdvisory(client), intervalMs);
+    setInterval(() => {
+      console.log('🌊 Running scheduled marine advisory check...');
+      checkMarineAdvisory(client);
+    }, intervalMs);
   }
 };
+

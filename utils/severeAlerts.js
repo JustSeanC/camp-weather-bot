@@ -113,9 +113,12 @@ fs.writeFileSync(alertFilePath, JSON.stringify(trimmed, null, 2));
 }
 
 function scheduleSevereAlertCheck(client) {
-  cron.schedule('*/5 * * * *', () => checkSevereAlerts(client), {
-    timezone: process.env.TIMEZONE || 'America/New_York'
-  });
+  cron.schedule('*/5 * * * *', () => {
+  console.log('⏱️ Running scheduled severe weather check...');
+  checkSevereAlerts(client);
+}, {
+  timezone: process.env.TIMEZONE || 'America/New_York'
+});
 }
 
 module.exports = { scheduleSevereAlertCheck };

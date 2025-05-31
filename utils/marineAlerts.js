@@ -19,6 +19,12 @@ const ALERT_API = `https://api.weather.gov/alerts/active/zone/${ALERT_ZONE}`;
 const CHECK_INTERVAL_MINUTES = 5;
 const DISCORD_CHANNEL_ID = process.env.MARINE_ALERT_CHANNEL_ID;
 
+const RELEVANT_AREAS = [
+  'Chester River',
+  'Chester River to Queenstown MD',
+  'Eastern Bay',
+  'Chesapeake Bay from Pooles Island to Sandy Point MD'
+];
 async function checkMarineAdvisory(client) {
   try {
     const res = await fetch(ALERT_API, { headers: { 'User-Agent': 'CampWeatherBot/1.0' } });
@@ -34,7 +40,19 @@ const alert = data.features.find(
 );
 
 
-    if (!alert || alert.id === lastAlertId) return;
+if (!alert || alert.id === lastAlertId) return;
+
+// Only continue if alert mentions one of the RELEVANT_AREAS
+
+const affectedAreas = alert.properties.areaDesc?.split(';').map(a => a.trim()) || [];
+const isRelevant = affectedAreas.some(area =>
+  RELEVANT_AREAS.some(keyword => area.includes(keyword))
+);
+
+if (!isRelevant) {
+  console.log(`[ℹ️] Skipping irrelevant alert: ${alert.properties.event}`);
+  return;
+}
 
     lastAlertId = alert.id;
     fs.writeFileSync(alertFilePath, JSON.stringify({ id: alert.id }, null, 2));
@@ -50,13 +68,7 @@ const alert = data.features.find(
       instruction
     } = alert.properties;
 
-    const RELEVANT_AREAS = [
-      'Chester River',
-      'Chester River to Queenstown MD',
-      'Eastern Bay',
-      'Chesapeake Bay from Pooles Island to Sandy Point MD'
-    ];
-
+  
     const highlightedAreaDesc = areaDesc.split(';').map(area => {
       const trimmed = area.trim();
       return RELEVANT_AREAS.some(key => trimmed.includes(key))

@@ -8,15 +8,18 @@ const cron = require('node-cron');
 const ALERT_API = 'https://api.weather.gov/alerts/active?point=39.2449,-75.9791';
 const alertFilePath = path.join(__dirname, '../data/lastSevereAlerts.json');
 
-// Load last IDs from disk
+// Load last IDs from disk (up to last 50 to prevent file bloat)
 let postedAlertIds = new Set();
 try {
   const raw = fs.readFileSync(alertFilePath, 'utf-8');
   const parsed = JSON.parse(raw);
-  postedAlertIds = new Set(parsed);
+  if (Array.isArray(parsed)) {
+    postedAlertIds = new Set(parsed.slice(-50)); // Keep only recent 50
+  }
 } catch {
   postedAlertIds = new Set();
 }
+
 
 function severityColor(severity) {
   switch (severity) {
@@ -69,7 +72,8 @@ for (const alert of data.features || []) {
       if (postedAlertIds.has(id)) continue;
 
       postedAlertIds.add(id);
-      fs.writeFileSync(alertFilePath, JSON.stringify([...postedAlertIds], null, 2));
+const trimmed = [...postedAlertIds].slice(-50);
+fs.writeFileSync(alertFilePath, JSON.stringify(trimmed, null, 2));
 
       const {
         event, severity, headline,
